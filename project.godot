@@ -1,5 +1,5 @@
 ; Engine configuration file.
-; Godot 4.7 Quake-inspired arena FPS
+; Godot 4.7.2 Quake-inspired arena FPS
 config_version=5
 
 [application]

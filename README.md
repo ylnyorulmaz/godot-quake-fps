@@ -1,16 +1,16 @@
 # Godot Quake FPS
 
-Quake 3 Arena-style movement and a modular weapon manager for **Godot 4.7**.
+Quake 3 Arena-style movement and a modular weapon manager for **Godot 4.7.2**.
 
 This is original code. It is not affiliated with id Software and does not include Quake assets.
 
 ## Run
 
-1. Install [Godot 4.7](https://godotengine.org/download) (the project uses the **Compatibility** renderer so it opens on more GPUs).
-2. Open this folder (`project.godot`). Godot 4.7 should not ask to upgrade the project version.
+1. Install [Godot **4.7.2**](https://godotengine.org/download) (standard build, not an older 4.3/4.4 editor). The project uses the **Compatibility** renderer so it opens on more GPUs.
+2. In the Project Manager: **Import** → select this folder’s `project.godot`. Do not convert/upgrade if it already says 4.7.
 3. Press **F5**. Input actions are registered at runtime by `scripts/input_bindings.gd`.
 
-If the editor still fails to open, start Godot from a terminal to see the error, and make sure you are using **4.7** (not 4.3/4.4). The project starts windowed; press **F11** for fullscreen.
+If the editor still fails to open, run the **console** build (`Godot_v4.7.2-stable_*_console.exe`) so the error stays on screen. The game starts windowed; press **F11** for fullscreen.
 
 ## Player node tree
 

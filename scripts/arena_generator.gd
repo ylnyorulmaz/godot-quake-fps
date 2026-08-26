@@ -104,6 +104,11 @@ func _ensure_containers() -> void:
 	_combiner.use_collision = true
 	_combiner.collision_layer = 1
 	_combiner.collision_mask = 0
+	# 4.7 CSG autosmooth/tangents are expensive on a 100m hull and can hitch the first frame.
+	if "autosmooth" in _combiner:
+		_combiner.autosmooth = false
+	if "calculate_tangents" in _combiner:
+		_combiner.calculate_tangents = false
 
 	# Invisible parse source so the floor stays walkable even if CSG bake is thin.
 	if _nav_region.get_node_or_null("NavFloor") == null:
@@ -137,9 +142,8 @@ func _environment() -> void:
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.08, 0.09, 0.1)
 	env.fog_density = 0.008
-	env.glow_enabled = true
-	env.glow_intensity = 0.45
-	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.glow_enabled = false
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	we.environment = env
 	add_child(we)
 
