@@ -89,35 +89,41 @@ static func fit_to_capsule(root: Node3D, target_height: float, yaw_degrees: floa
 
 
 static func combined_aabb(root: Node3D) -> AABB:
+	if root == null:
+		return AABB()
+	return _walk_aabb(root, root.transform)
+
+
+static func _walk_aabb(node: Node, xf_to_parent: Transform3D) -> AABB:
 	var acc := AABB()
 	var has := false
-	if root == null or not root.is_inside_tree():
-		return acc
-	var parent_inv := root.get_parent() as Node3D
-	var to_parent: Transform3D
-	if parent_inv != null:
-		to_parent = parent_inv.global_transform.affine_inverse()
-	else:
-		to_parent = Transform3D.IDENTITY
-	var stack: Array[Node] = [root]
-	while not stack.is_empty():
-		var node: Node = stack.pop_back()
-		for child in node.get_children():
-			stack.append(child)
-		if not (node is VisualInstance3D) or not (node is Node3D):
+	var local_aabb := _node_aabb(node)
+	if local_aabb.size.x > 0.0 or local_aabb.size.y > 0.0 or local_aabb.size.z > 0.0:
+		acc = xf_to_parent * local_aabb
+		has = true
+	for child in node.get_children():
+		var child_xf := xf_to_parent
+		if child is Node3D:
+			child_xf = xf_to_parent * (child as Node3D).transform
+		var child_aabb := _walk_aabb(child, child_xf)
+		if child_aabb.size == Vector3.ZERO and child_aabb.position == Vector3.ZERO:
 			continue
-		var vis := node as VisualInstance3D
-		var local_aabb: AABB = vis.get_aabb()
-		if local_aabb.size.x <= 0.0 and local_aabb.size.y <= 0.0 and local_aabb.size.z <= 0.0:
-			continue
-		var xf := to_parent * (node as Node3D).global_transform
-		var world_aabb := xf.xform(local_aabb)
 		if not has:
-			acc = world_aabb
+			acc = child_aabb
 			has = true
 		else:
-			acc = acc.merge(world_aabb)
+			acc = acc.merge(child_aabb)
 	return acc if has else AABB()
+
+
+static func _node_aabb(node: Node) -> AABB:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		if mi.mesh != null:
+			return mi.mesh.get_aabb()
+	if node is VisualInstance3D:
+		return (node as VisualInstance3D).get_aabb()
+	return AABB()
 
 
 static func play_first_animation(root: Node) -> void:
