@@ -1,13 +1,13 @@
 # Godot Quake FPS
 
-Quake 3 Arena-style movement and a modular weapon manager for **Godot 4.3+**.
+Quake 3 Arena-style movement and a modular weapon manager for **Godot 4.7**.
 
 This is original code. It is not affiliated with id Software and does not include Quake assets.
 
 ## Run
 
-1. Install [Godot 4.3 or newer](https://godotengine.org/download).
-2. Open this folder (`project.godot`).
+1. Install [Godot 4.7](https://godotengine.org/download) (Forward+).
+2. Open this folder (`project.godot`). Godot 4.7 should not ask to upgrade the project version.
 3. Press **F5**. Input actions are registered at runtime by `scripts/input_bindings.gd`.
 
 ## Player node tree
@@ -68,7 +68,7 @@ Switch with **1–4** or the mouse wheel (`next_weapon` / `prev_weapon`). Fire w
 
 ## Optional Project Settings
 
-The autoload `InputBindings` creates these actions if they are missing. To bind them in the editor instead:
+The autoload `InputBindings` creates these actions if they are missing (device `-1` so they work on Godot 4.7, where device `0` can be a joypad). To bind them in the editor instead:
 
 `move_forward`, `move_back`, `move_left`, `move_right`, `jump`, `sprint`, `crouch`, `fire`, `next_weapon`, `prev_weapon`, `weapon_1`…`weapon_4`.
 

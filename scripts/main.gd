@@ -64,7 +64,7 @@ func _build_menu() -> void:
 	col.add_child(title)
 
 	var sub := Label.new()
-	sub.text = "Godot 4 arena shooter  ·  air-strafe  ·  rocket jump"
+	sub.text = "Godot 4.7 arena shooter  ·  air-strafe  ·  rocket jump"
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 18)
 	sub.add_theme_color_override("font_color", Color(0.8, 0.7, 0.55))

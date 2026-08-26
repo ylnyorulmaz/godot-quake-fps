@@ -33,6 +33,8 @@ func _key(action: String, keycode: Key) -> void:
 	_ensure(action)
 	var event := InputEventKey.new()
 	event.physical_keycode = keycode
+	# Match all devices. In Godot 4.7, device 0 can be a joypad.
+	event.device = -1
 	if not InputMap.action_has_event(action, event):
 		InputMap.action_add_event(action, event)
 
@@ -41,6 +43,7 @@ func _mouse(action: String, button: MouseButton) -> void:
 	_ensure(action)
 	var event := InputEventMouseButton.new()
 	event.button_index = button
+	event.device = -1
 	if not InputMap.action_has_event(action, event):
 		InputMap.action_add_event(action, event)
 
