@@ -121,9 +121,9 @@ func _start_match() -> void:
 	_player.died.connect(_on_player_died)
 
 	_hud = HUD.new()
-	_hud.player = _player
 	_hud.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_hud)
+	_hud.setup(_player)
 
 	_bots.clear()
 	for i in BOT_COUNT:

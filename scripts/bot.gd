@@ -189,6 +189,22 @@ func take_damage(amount: float, dir: Vector3, knockback: float, attacker: Node =
 		_die(attacker)
 
 
+func apply_explosion_knockback(push_direction: Vector3, force: float) -> void:
+	if not _alive or force <= 0.0:
+		return
+	var dir := push_direction
+	if dir.length_squared() < 0.0001:
+		dir = Vector3.UP
+	else:
+		dir = dir.normalized()
+	var scaled := Vector3(dir.x, dir.y * 1.45, dir.z)
+	if scaled.length_squared() > 0.0001:
+		scaled = scaled.normalized()
+	if scaled.y > 0.2 and velocity.y < 0.0:
+		velocity.y *= 0.12
+	velocity += scaled * force
+
+
 func apply_pickup(kind: int) -> bool:
 	match kind:
 		Pickup.Kind.HEALTH:

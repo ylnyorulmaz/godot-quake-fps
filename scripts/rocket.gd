@@ -3,12 +3,16 @@ extends Area3D
 
 ## High-speed projectile. Explodes on world / actor contact with splash.
 
+@export var rocket_speed: float = 40.0
+@export var splash_radius: float = 6.0
+@export var blast_force: float = 28.0
+@export var direct_damage: float = 100.0
+
 var direction := Vector3.FORWARD
 var shooter: Node3D
-var speed := 32.0
+var speed := 40.0
 var max_damage := 100.0
-var splash_radius := 6.0
-var knockback := 18.0
+var knockback := 28.0
 var self_damage_scale := 0.55
 
 var _alive := true
@@ -27,9 +31,12 @@ func configure(
 	shooter = p_shooter
 	direction = p_dir.normalized()
 	max_damage = p_damage
+	direct_damage = p_damage
 	splash_radius = p_radius
 	knockback = p_knockback
+	blast_force = p_knockback
 	speed = p_speed
+	rocket_speed = p_speed
 	self_damage_scale = p_self_scale
 
 
@@ -38,7 +45,8 @@ func _ready() -> void:
 	monitorable = false
 	collision_layer = 8
 	collision_mask = 1 | 2 | 4
-	body_entered.connect(_on_body)
+	if not body_entered.is_connected(_on_body):
+		body_entered.connect(_on_body)
 
 	if get_node_or_null("CollisionShape3D") == null:
 		var shape := CollisionShape3D.new()
@@ -135,6 +143,7 @@ func _explode(at: Vector3) -> void:
 	if not _alive:
 		return
 	_alive = false
+	global_position = at
 	AudioFx.play_at("explode", at)
 	var fx := ExplosionFx.new()
 	var host := get_tree().get_first_node_in_group("world_root")
@@ -143,32 +152,39 @@ func _explode(at: Vector3) -> void:
 	host.add_child(fx)
 	fx.global_position = at
 
-	global_position = at
-	if _splash.shape is SphereShape3D:
-		(_splash.shape as SphereShape3D).radius = splash_radius
-	_splash.enabled = true
-	_splash.force_shapecast_update()
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsShapeQueryParameters3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = splash_radius
+	query.shape = sphere
+	query.transform = Transform3D(Basis(), at)
+	query.collision_mask = 2 | 4
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	var results := space.intersect_shape(query, 32)
 	var seen: Array[Object] = []
-	for i in _splash.get_collision_count():
-		var collider := _splash.get_collider(i)
+	for item in results:
+		var collider: Object = item.get("collider")
 		if collider == null or collider in seen:
 			continue
 		seen.append(collider)
-		if not collider.has_method("take_damage"):
-			continue
 		var body := collider as Node3D
-		var center := body.global_position + Vector3(0.0, 0.9, 0.0)
-		var dist := center.distance_to(at)
-		var falloff := 1.0 - clampf(dist / splash_radius, 0.0, 1.0)
-		if falloff <= 0.0:
+		if body == null:
 			continue
-		var dir := center - at
-		if dir.length_squared() < 0.001:
-			dir = Vector3.UP
-		else:
-			dir = dir.normalized()
-		var dmg := max_damage * falloff
+		var center := body.global_position + Vector3(0.0, 0.45, 0.0)
+		var to_body := center - at
+		var dist := to_body.length()
+		if dist >= splash_radius:
+			continue
+		var falloff := (splash_radius - dist) / splash_radius
+		var dir := Vector3.UP if dist < 0.08 else to_body.normalized()
+		var dmg := direct_damage * falloff
 		if body == shooter:
 			dmg *= self_damage_scale
-		collider.take_damage(dmg, dir, knockback * falloff, shooter)
+		if collider.has_method("apply_explosion_knockback"):
+			collider.apply_explosion_knockback(dir, blast_force * falloff)
+			if collider.has_method("take_damage"):
+				collider.take_damage(dmg, dir, 0.0, shooter)
+		elif collider.has_method("take_damage"):
+			collider.take_damage(dmg, dir, knockback * falloff, shooter)
 	queue_free()

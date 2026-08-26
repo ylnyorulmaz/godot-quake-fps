@@ -20,6 +20,13 @@ signal health_changed
 @export var PITCH_LIMIT_DEG := 89.0
 @export var FOV := 100.0
 
+@export_category("Dynamic FOV")
+@export var base_fov: float = 100.0
+@export var max_fov: float = 118.0
+@export var fov_normal_speed: float = 10.0
+@export var fov_max_speed: float = 35.0
+@export var fov_change_speed: float = 8.0
+
 @export_category("Movement")
 @export var MOVE_SPEED := 10.0
 @export var FRICTION := 6.0
@@ -41,6 +48,10 @@ signal health_changed
 const MAX_HEALTH := 100.0
 const MAX_OVERHEALTH := 200.0
 const MAX_ARMOR := 100.0
+## Quake-style units for HUD (10 m/s ground cap → 320 ups).
+const UPS_SCALE := 32.0
+const BLAST_VERTICAL_BIAS := 1.45
+const BLAST_HORIZONTAL_SCALE := 1.05
 
 var health := 100.0
 var armor := 0.0
@@ -75,7 +86,7 @@ func _ready() -> void:
 	motion_mode = MOTION_MODE_GROUNDED
 	_ensure_tree()
 	_cache_nodes()
-	_cam.fov = FOV
+	_cam.fov = base_fov
 	_eye_height = EYE_HEIGHT
 	weapons.setup(self, true)
 
@@ -110,7 +121,7 @@ func _ensure_tree() -> void:
 		add_child(_head)
 		_cam = Camera3D.new()
 		_cam.name = "Camera3D"
-		_cam.fov = FOV
+		_cam.fov = base_fov
 		_cam.near = 0.05
 		_cam.far = 250.0
 		_head.add_child(_cam)
@@ -201,6 +212,25 @@ func _physics_process(delta: float) -> void:
 	_hurt_flash = maxf(_hurt_flash - delta * 2.5, 0.0)
 
 
+func _process(delta: float) -> void:
+	if not _alive or GameState.paused or not GameState.match_running:
+		return
+	_calculate_dynamic_fov(delta)
+
+
+func _calculate_dynamic_fov(delta: float) -> void:
+	if _cam == null:
+		return
+	var current_speed := horizontal_speed()
+	var target_fov := base_fov
+	if current_speed > fov_normal_speed:
+		var speed_factor := remap(current_speed, fov_normal_speed, fov_max_speed, 0.0, 1.0)
+		speed_factor = clampf(speed_factor, 0.0, 1.0)
+		target_fov = lerpf(base_fov, max_fov, speed_factor)
+	var t := 1.0 - exp(-fov_change_speed * delta)
+	_cam.fov = lerpf(_cam.fov, target_fov, t)
+
+
 func _apply_look(delta: float) -> void:
 	var lim := deg_to_rad(PITCH_LIMIT_DEG)
 	_pitch_target = clampf(_pitch_target, -lim, lim)
@@ -278,6 +308,27 @@ func take_damage(amount: float, dir: Vector3, knockback: float, attacker: Node =
 		_die(attacker)
 
 
+func apply_explosion_knockback(push_direction: Vector3, force: float) -> void:
+	if not _alive or force <= 0.0:
+		return
+	var dir := push_direction
+	if dir.length_squared() < 0.0001:
+		dir = Vector3.UP
+	else:
+		dir = dir.normalized()
+	var scaled := Vector3(
+			dir.x * BLAST_HORIZONTAL_SCALE,
+			dir.y * BLAST_VERTICAL_BIAS,
+			dir.z * BLAST_HORIZONTAL_SCALE
+	)
+	if scaled.length_squared() > 0.0001:
+		scaled = scaled.normalized()
+	# A blast under the feet should cancel downward momentum (rocket jump).
+	if scaled.y > 0.2 and velocity.y < 0.0:
+		velocity.y *= 0.12
+	velocity += scaled * force
+
+
 func apply_pickup(kind: int) -> bool:
 	match kind:
 		Pickup.Kind.HEALTH:
@@ -332,6 +383,30 @@ func respawn_at(pos: Vector3) -> void:
 
 func eye_transform() -> Transform3D:
 	return _cam.global_transform
+
+
+func camera() -> Camera3D:
+	return _cam
+
+
+func look_yaw() -> float:
+	return _yaw
+
+
+func horizontal_velocity() -> Vector3:
+	return Vector3(velocity.x, 0.0, velocity.z)
+
+
+func horizontal_speed() -> float:
+	return horizontal_velocity().length()
+
+
+func speed_ups() -> float:
+	return horizontal_speed() * UPS_SCALE
+
+
+func air_wish_speed_cap() -> float:
+	return _move.AIR_WISH_SPEED_CAP
 
 
 func is_alive() -> bool:

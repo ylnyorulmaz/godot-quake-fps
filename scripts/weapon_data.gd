@@ -78,14 +78,14 @@ static func rocket_launcher() -> WeaponData:
 	d.is_hitscan = false
 	d.projectile_scene = load("res://scenes/rocket.tscn") as PackedScene
 	d.pellet_count = 1
-	d.knockback = 18.0
+	d.knockback = 28.0
 	d.viewmodel_size = Vector3(0.16, 0.16, 0.7)
 	d.viewmodel_color = Color(0.35, 0.12, 0.08)
 	d.sound_key = "rocket"
 	d.max_ammo = 50
 	d.splash_radius = 6.0
-	d.splash_knockback = 18.0
-	d.projectile_speed = 32.0
+	d.splash_knockback = 28.0
+	d.projectile_speed = 40.0
 	return d
 
 

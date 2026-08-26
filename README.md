@@ -43,12 +43,21 @@ Player (CharacterBody3D)          scenes/player.tscn  scripts/player.gd
 
 Bunny hop: jump on the landing frame **skips friction**, so horizontal speed is kept. A short jump buffer and optional hold-to-bhop (`AUTO_BHOP`) make the timing usable.
 
+Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bhop stretch). Rocket splash calls `apply_explosion_knockback` with extra vertical bias for rocket jumps.
+
+## HUD
+
+`scripts/hud.gd` is a full-rect `CanvasLayer/Root` so it scales with the window.
+
+- **Speedometer** (center-bottom): `Speed: 320 ups` from XZ velocity × 32.
+- **Strafe helper** (behind the crosshair): two ticks at ±acos(air-wish-cap / speed) in view space. They turn green when your look yaw is in the optimal window.
+
 ## Weapons
 
 `WeaponData` (`scripts/weapon_data.gd`) defines `damage`, `fire_rate`, `range`, `is_hitscan`, `projectile_scene`.
 
 - **Hitscan** (MG / shotgun / rail): `RayCast3D` from the camera, plus spread pellets. Calls `take_damage` on the hit body and spawns a short 3D trail.
-- **Projectile** (rocket): `scenes/rocket.tscn` from **Muzzle**, aimed at the camera ray point. Explodes with `ShapeCast3D` splash (self-damage scaled for rocket jumps).
+- **Projectile** (rocket): `scenes/rocket.tscn` from **Muzzle**, aimed at the camera ray point. Sphere query splash + `apply_explosion_knockback` (self-damage scaled).
 
 Switch with **1–4** or the mouse wheel (`next_weapon` / `prev_weapon`). Fire with **LMB** (`fire`).
 
