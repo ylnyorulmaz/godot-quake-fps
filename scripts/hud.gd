@@ -17,6 +17,14 @@ var _hurt: ColorRect
 var _scoreboard: Label
 var _hint: Label
 var _shown_ups := 0.0
+var _flash_tween: Tween
+var _last_health: float = -1.0
+var _health_comp: HealthComponent
+
+@export var critical_health_color: Color = Color.RED
+@export var normal_health_color: Color = Color.WHITE
+@export var mega_health_color: Color = Color.CYAN
+@export var damage_flash_color: Color = Color.CRIMSON
 
 
 func _ready() -> void:
@@ -118,6 +126,7 @@ func _ready() -> void:
 func setup(p: Player) -> void:
 	player = p
 	_strafe.player = p
+	_bind_health(p)
 
 
 func _label(size: int, color: Color, align: HorizontalAlignment) -> Label:
@@ -139,11 +148,69 @@ func _draw_cross() -> void:
 	_cross.draw_rect(Rect2(11, 11, 2, 2), Color(0, 0, 0))
 
 
+func _bind_health(p: Player) -> void:
+	_health_comp = p.get_node_or_null("HealthComponent") as HealthComponent
+	if _health_comp == null:
+		_health_comp = get_node_or_null("/root/Main/Player/HealthComponent") as HealthComponent
+	if _health_comp == null:
+		return
+	if not _health_comp.health_changed.is_connected(_on_health_changed):
+		_health_comp.health_changed.connect(_on_health_changed)
+	if not _health_comp.armor_changed.is_connected(_on_armor_changed):
+		_health_comp.armor_changed.connect(_on_armor_changed)
+	if not _health_comp.damaged.is_connected(_on_damaged):
+		_health_comp.damaged.connect(_on_damaged)
+	_on_health_changed(_health_comp.current_health)
+	_on_armor_changed(_health_comp.current_armor)
+
+
+func _on_health_changed(new_health: float) -> void:
+	if _health == null:
+		return
+	_health.text = "HP: %d" % ceili(new_health)
+	_apply_health_color(new_health)
+	_last_health = new_health
+
+
+func _on_armor_changed(new_armor: float) -> void:
+	if _armor == null:
+		return
+	_armor.text = "ARMOR: %d" % ceili(new_armor)
+	if new_armor > 100.0:
+		_armor.add_theme_color_override("font_color", mega_health_color)
+	else:
+		_armor.add_theme_color_override("font_color", normal_health_color)
+
+
+func _on_damaged(_amount: float, _new_health: float) -> void:
+	_trigger_damage_flash()
+
+
+func _apply_health_color(new_health: float) -> void:
+	if new_health > 100.0:
+		_health.add_theme_color_override("font_color", mega_health_color)
+	elif new_health <= 25.0:
+		_health.add_theme_color_override("font_color", critical_health_color)
+	else:
+		_health.add_theme_color_override("font_color", normal_health_color)
+
+
+func _trigger_damage_flash() -> void:
+	if _health == null:
+		return
+	if _flash_tween:
+		_flash_tween.kill()
+	_flash_tween = create_tween()
+	_health.add_theme_color_override("font_color", damage_flash_color)
+	_flash_tween.tween_interval(0.1)
+	_flash_tween.tween_callback(func() -> void:
+		_apply_health_color(_last_health)
+	)
+
+
 func _process(delta: float) -> void:
 	if player == null or not is_instance_valid(player):
 		return
-	_health.text = "%d" % int(player.health)
-	_armor.text = "ARMOR %d" % int(player.armor)
 	_ammo.text = "%d" % player.weapons.current_ammo()
 	_weapon.text = player.weapons.current_name()
 	var target_ups := player.speed_ups()

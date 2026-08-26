@@ -14,6 +14,7 @@ This is original code. It is not affiliated with id Software and does not includ
 
 ```
 Player (CharacterBody3D)          scenes/player.tscn  scripts/player.gd
+├─ HealthComponent                scripts/health_component.gd
 ├─ CollisionShape3D (Capsule)
 ├─ BodyMesh
 └─ Head (Node3D)                  camera pivot / pitch
@@ -43,7 +44,21 @@ Player (CharacterBody3D)          scenes/player.tscn  scripts/player.gd
 
 Bunny hop: jump on the landing frame **skips friction**, so horizontal speed is kept. A short jump buffer and optional hold-to-bhop (`AUTO_BHOP`) make the timing usable.
 
-Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bhop stretch). Rocket splash calls `apply_explosion_knockback` with extra vertical bias for rocket jumps.
+Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bhop stretch). Rocket splash calls `apply_explosion_knockback` with extra vertical bias for rocket jumps. Jump pads call `Player.launch()` so the PMove step treats the body as airborne (`force_air`) and does not apply ground friction.
+
+## Test arena (CSG)
+
+`ArenaGenerator` (`scripts/arena_generator.gd`, `scenes/arena_generator.tscn`) builds the blockout in `_ready()`:
+
+- 100×100 grid floor, ramps at 15° / 30° / 45°, strafe-gap platforms (4–12 units), enclosed speed hallway
+- Jump pads (`scenes/jump_pad.tscn`) and a respawning Mega-Health (`scenes/mega_health.tscn`)
+- Spawn / nav markers so deathmatch still runs on the same map
+
+## Health and armor
+
+`HealthComponent` uses classic arena rules: armor absorbs **60%** of a hit, **40%** goes to health; leftover damage after armor depletes hits health at 100%. Values above 100 (mega items) decay at 1 point per second. Signals: `health_changed`, `armor_changed`, `damaged`, `died`.
+
+Mega-Health: +100 HP, clamped to 200, 30s respawn.
 
 ## HUD
 
@@ -51,6 +66,7 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 
 - **Speedometer** (center-bottom): `Speed: 320 ups` from XZ velocity × 32.
 - **Strafe helper** (behind the crosshair): two ticks at ±acos(air-wish-cap / speed) in view space. They turn green when your look yaw is in the optimal window.
+- **HP / armor**: integer `HP:` / `ARMOR:` from `HealthComponent` signals. Cyan over 100, red at or below 25, crimson flash on damage. `scripts/retro_hud.gd` is the same wiring for a Control-based overlay.
 
 ## Weapons
 

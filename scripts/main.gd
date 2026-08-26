@@ -17,8 +17,14 @@ func _ready() -> void:
 	_world.name = "World"
 	_world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_world)
-	var builder := ArenaBuilder.new()
-	builder.build(_world)
+	var arena: Node3D = null
+	var packed := load("res://scenes/arena_generator.tscn") as PackedScene
+	if packed != null:
+		arena = packed.instantiate() as Node3D
+	else:
+		arena = ArenaGenerator.new()
+	arena.name = "ArenaGenerator"
+	_world.add_child(arena)
 	_build_menu()
 	_build_end()
 	GameState.match_ended.connect(_on_match_ended)

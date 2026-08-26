@@ -1,5 +1,6 @@
 class_name ArenaBuilder
 extends Node
+## Legacy enclosed deathmatch hull. The live map is `ArenaGenerator`.
 
 var world: Node3D
 

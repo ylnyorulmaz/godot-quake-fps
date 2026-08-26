@@ -1,0 +1,25 @@
+[gd_scene load_steps=4 format=3 uid="uid://megahealthpickup01"]
+
+[ext_resource type="Script" path="res://scripts/mega_health.gd" id="1_script"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_mh"]
+radius = 0.7
+
+[sub_resource type="SphereMesh" id="SphereMesh_mh"]
+radius = 0.55
+height = 1.1
+
+[node name="MegaHealth" type="Area3D"]
+collision_layer = 16
+collision_mask = 6
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_mh")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("SphereMesh_mh")
+
+[node name="Timer" type="Timer" parent="."]
+one_shot = true
+wait_time = 30.0

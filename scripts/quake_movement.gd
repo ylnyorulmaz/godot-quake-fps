@@ -22,7 +22,8 @@ static func move(
 		crouching: bool,
 		sprinting: bool,
 		delta: float,
-		p: QuakeMoveParams
+		p: QuakeMoveParams,
+		force_air: bool = false
 ) -> void:
 	wish_dir.y = 0.0
 	if wish_dir.length_squared() > 1.0:
@@ -33,10 +34,12 @@ static func move(
 	var wish_speed := p.MOVE_SPEED
 	if crouching:
 		wish_speed *= p.CROUCH_MULTIPLIER
-	elif sprinting and body.is_on_floor():
+	elif sprinting and body.is_on_floor() and not force_air:
 		wish_speed *= p.SPRINT_MULTIPLIER
 
-	if body.is_on_floor():
+	# Jump pads / explosions set force_air so floor friction cannot eat the launch.
+	var grounded := body.is_on_floor() and not force_air
+	if grounded:
 		if jumping and not crouching:
 			# Exact landing hop: no friction this frame.
 			body.velocity.y = p.JUMP_FORCE

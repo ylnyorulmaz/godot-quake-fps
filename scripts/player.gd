@@ -6,6 +6,7 @@ extends CharacterBody3D
 ## Tree:
 ##   Player (this)
 ##     CollisionShape3D (capsule)
+##     HealthComponent
 ##     Head
 ##       Camera3D
 ##         WeaponManager
@@ -52,10 +53,17 @@ const MAX_ARMOR := 100.0
 const UPS_SCALE := 32.0
 const BLAST_VERTICAL_BIAS := 1.45
 const BLAST_HORIZONTAL_SCALE := 1.05
+const DEFAULT_FLOOR_SNAP := 0.12
 
-var health := 100.0
-var armor := 0.0
 var weapons: WeaponManager
+var health_comp: HealthComponent
+
+var health: float:
+	get:
+		return health_comp.current_health if health_comp else 0.0
+var armor: float:
+	get:
+		return health_comp.current_armor if health_comp else 0.0
 
 var _yaw := 0.0
 var _pitch := 0.0
@@ -72,7 +80,9 @@ var _eye_height := 1.55
 var _bob := 0.0
 var _jump_buffer := 0.0
 var _was_on_floor := false
+var _launch_ignore_frames := 0
 var _move := QuakeMoveParams.new()
+var _last_attacker: Node = null
 
 
 func _ready() -> void:
@@ -81,7 +91,7 @@ func _ready() -> void:
 	collision_mask = 1 | 4 | 8 | 16
 	floor_stop_on_slope = false
 	floor_max_angle = deg_to_rad(60.0)
-	floor_snap_length = 0.12
+	floor_snap_length = DEFAULT_FLOOR_SNAP
 	safe_margin = 0.08
 	motion_mode = MOTION_MODE_GROUNDED
 	_ensure_tree()
@@ -89,6 +99,10 @@ func _ready() -> void:
 	_cam.fov = base_fov
 	_eye_height = EYE_HEIGHT
 	weapons.setup(self, true)
+	if health_comp and not health_comp.died.is_connected(_on_vitals_died):
+		health_comp.died.connect(_on_vitals_died)
+	if health_comp and not health_comp.health_changed.is_connected(_on_vitals_health):
+		health_comp.health_changed.connect(_on_vitals_health)
 
 
 func _ensure_tree() -> void:
@@ -136,6 +150,10 @@ func _ensure_tree() -> void:
 			weapons = WeaponManager.new()
 			weapons.name = "WeaponManager"
 			_cam.add_child(weapons)
+	if get_node_or_null("HealthComponent") == null:
+		health_comp = HealthComponent.new()
+		health_comp.name = "HealthComponent"
+		add_child(health_comp)
 
 
 func _cache_nodes() -> void:
@@ -145,6 +163,7 @@ func _cache_nodes() -> void:
 	_cam = $Head/Camera3D
 	weapons = $Head/Camera3D/WeaponManager
 	_mesh = get_node_or_null("BodyMesh") as MeshInstance3D
+	health_comp = get_node_or_null("HealthComponent") as HealthComponent
 	# Hide own capsule from the first-person camera.
 	_cam.cull_mask = _cam.cull_mask & ~2
 
@@ -200,8 +219,13 @@ func _physics_process(delta: float) -> void:
 			AudioFx.play("jump")
 
 	var sprinting := Input.is_action_pressed("sprint")
-	QuakeMovement.move(self, wish, jumping, crouch, sprinting, delta, _move)
-	_was_on_floor = is_on_floor()
+	var force_air := _launch_ignore_frames > 0
+	if _launch_ignore_frames > 0:
+		_launch_ignore_frames -= 1
+		if _launch_ignore_frames <= 0:
+			floor_snap_length = DEFAULT_FLOOR_SNAP
+	QuakeMovement.move(self, wish, jumping, crouch, sprinting, delta, _move, force_air)
+	_was_on_floor = is_on_floor() and not force_air
 
 	_bob += Vector3(velocity.x, 0.0, velocity.z).length() * delta
 	var bob_amt := 0.0 if not is_on_floor() else sin(_bob * 8.0) * 0.025
@@ -292,20 +316,23 @@ func _set_crouch(crouch: bool) -> void:
 func take_damage(amount: float, dir: Vector3, knockback: float, attacker: Node = null) -> void:
 	if not _alive:
 		return
-	var incoming := amount
-	if armor > 0.0:
-		var absorbed := incoming * 0.66
-		var used := minf(armor, absorbed)
-		armor -= used
-		incoming -= used
-	health -= incoming
+	_last_attacker = attacker
+	if health_comp:
+		health_comp.take_damage(amount)
 	if dir.length_squared() > 0.0001:
 		velocity += dir.normalized() * knockback
 	_hurt_flash = 0.55
 	AudioFx.play("hurt")
-	health_changed.emit()
-	if health <= 0.0:
-		_die(attacker)
+
+
+func launch(impulse: Vector3) -> void:
+	## Jump-pad / scripted launch: replace velocity and skip ground friction.
+	if not _alive:
+		return
+	velocity = impulse
+	_launch_ignore_frames = 8
+	floor_snap_length = 0.0
+	_was_on_floor = false
 
 
 func apply_explosion_knockback(push_direction: Vector3, force: float) -> void:
@@ -332,15 +359,14 @@ func apply_explosion_knockback(push_direction: Vector3, force: float) -> void:
 func apply_pickup(kind: int) -> bool:
 	match kind:
 		Pickup.Kind.HEALTH:
-			if health >= MAX_HEALTH:
+			if health_comp == null or not health_comp.add_health(25.0, health_comp.max_health):
 				return false
-			health = minf(health + 25.0, MAX_HEALTH)
 		Pickup.Kind.MEGA_HEALTH:
-			health = minf(health + 100.0, MAX_OVERHEALTH)
-		Pickup.Kind.ARMOR:
-			if armor >= MAX_ARMOR:
+			if health_comp == null or not health_comp.apply_mega_health(100.0):
 				return false
-			armor = minf(armor + 50.0, MAX_ARMOR)
+		Pickup.Kind.ARMOR:
+			if health_comp == null or not health_comp.add_armor(50.0, health_comp.max_armor):
+				return false
 		Pickup.Kind.MG_AMMO:
 			weapons.add_ammo(WeaponManager.Kind.MG, 50)
 		Pickup.Kind.SG_AMMO:
@@ -361,6 +387,15 @@ func apply_pickup(kind: int) -> bool:
 	return true
 
 
+func _on_vitals_health(_new_health: float) -> void:
+	health_changed.emit()
+
+
+func _on_vitals_died() -> void:
+	if _alive:
+		_die(_last_attacker)
+
+
 func _die(attacker: Node) -> void:
 	_alive = false
 	AudioFx.play("death")
@@ -372,8 +407,10 @@ func _die(attacker: Node) -> void:
 func respawn_at(pos: Vector3) -> void:
 	global_position = pos
 	velocity = Vector3.ZERO
-	health = MAX_HEALTH
-	armor = 0.0
+	_launch_ignore_frames = 0
+	floor_snap_length = DEFAULT_FLOOR_SNAP
+	if health_comp:
+		health_comp.reset_to_spawn()
 	_alive = true
 	visible = true
 	collision_layer = 2
