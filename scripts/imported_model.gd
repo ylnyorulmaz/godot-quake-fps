@@ -7,6 +7,8 @@ extends RefCounted
 ## so the actor keeps its own capsule.
 
 const DEFAULT_CANDIDATES: PackedStringArray = [
+	"res://assets/models/warrior.glb",
+	"res://assets/models/warrior.gltf",
 	"res://assets/models/orc.glb",
 	"res://assets/models/orc.gltf",
 	"res://assets/models/orc.tscn",
