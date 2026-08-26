@@ -10,6 +10,8 @@ var _cache: Dictionary = {}
 
 
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		return
 	for i in 10:
 		var p := AudioStreamPlayer.new()
 		p.bus = "Master"
@@ -25,6 +27,8 @@ func _ready() -> void:
 
 
 func play(kind: String) -> void:
+	if _pool.is_empty():
+		return
 	var player := _pool[_cursor]
 	_cursor = (_cursor + 1) % _pool.size()
 	player.stream = _stream(kind)
@@ -33,6 +37,8 @@ func play(kind: String) -> void:
 
 
 func play_at(kind: String, world_pos: Vector3) -> void:
+	if _pool3d.is_empty():
+		return
 	var player := _pool3d[_cursor3d]
 	_cursor3d = (_cursor3d + 1) % _pool3d.size()
 	player.global_position = world_pos

@@ -5,6 +5,8 @@ extends Node
 
 
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		return
 	_key("move_forward", KEY_W)
 	_key("move_forward", KEY_UP)
 	_key("move_back", KEY_S)

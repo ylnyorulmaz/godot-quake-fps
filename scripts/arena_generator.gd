@@ -32,6 +32,8 @@ var _tex_cache: Dictionary = {}
 
 
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		return
 	_build()
 	_bake_navigation()
 
@@ -55,31 +57,27 @@ func _build() -> void:
 
 
 func _bake_navigation() -> void:
-	## Wait until CSG collision meshes exist, then bake a navmesh that wraps
-	## the arena so NavigationAgent3D bots can path the floor, ramps, and halls.
+	## Bake only the floor plane (not CSG). Parsing CSG at runtime can freeze
+	## or crash the renderer, and a 100m BOTH bake is far too heavy for startup.
 	await get_tree().physics_frame
-	await get_tree().physics_frame
-	if _nav_region == null:
+	if not is_inside_tree() or _nav_region == null:
 		return
 	var mesh := NavigationMesh.new()
 	mesh.agent_radius = 0.5
 	mesh.agent_height = 1.75
 	mesh.agent_max_climb = 0.5
 	mesh.agent_max_slope = 50.0
-	# Must match the default navigation map (ProjectSettings / 0.25).
 	mesh.cell_size = 0.25
 	mesh.cell_height = 0.25
 	if "border_size" in mesh:
 		mesh.border_size = 0.5
 	if "geometry_parsed_geometry_type" in mesh:
-		mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_BOTH
+		mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_MESH_INSTANCES
 	elif "parsed_geometry_type" in mesh:
-		mesh.parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_BOTH
-	if "geometry_collision_mask" in mesh:
-		mesh.geometry_collision_mask = 1
+		mesh.parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_MESH_INSTANCES
 	_nav_region.navigation_mesh = mesh
 	if _nav_region.has_method("bake_navigation_mesh"):
-		_nav_region.bake_navigation_mesh(false)
+		_nav_region.bake_navigation_mesh(true)
 	else:
 		var src := NavigationMeshSourceGeometryData3D.new()
 		NavigationServer3D.parse_source_geometry_data(mesh, src, _nav_region)
@@ -94,20 +92,18 @@ func _ensure_containers() -> void:
 		_nav_region.name = "NavigationRegion3D"
 		add_child(_nav_region)
 
-	_combiner = get_node_or_null("NavigationRegion3D/CSGCombiner3D") as CSGCombiner3D
+	_combiner = get_node_or_null("CSGCombiner3D") as CSGCombiner3D
 	if _combiner == null:
-		_combiner = get_node_or_null("CSGCombiner3D") as CSGCombiner3D
+		_combiner = get_node_or_null("NavigationRegion3D/CSGCombiner3D") as CSGCombiner3D
 	if _combiner == null:
 		_combiner = CSGCombiner3D.new()
 		_combiner.name = "CSGCombiner3D"
-		_nav_region.add_child(_combiner)
-	elif _combiner.get_parent() != _nav_region:
-		_combiner.reparent(_nav_region)
+		add_child(_combiner)
+	elif _combiner.get_parent() != self:
+		_combiner.reparent(self)
 	_combiner.use_collision = true
 	_combiner.collision_layer = 1
 	_combiner.collision_mask = 0
-	if "autosmooth" in _combiner:
-		_combiner.autosmooth = true
 
 	# Invisible parse source so the floor stays walkable even if CSG bake is thin.
 	if _nav_region.get_node_or_null("NavFloor") == null:
@@ -379,7 +375,7 @@ func _ramp_polygon(origin: Vector3, run: float, angle_deg: float, width: float, 
 	slab.use_collision = true
 	slab.collision_layer = 1
 	slab.collision_mask = 0
-	_nav_region.add_child(slab)
+	add_child(slab)
 	slab.rotation_degrees.y = yaw_deg
 	var local_mid := Vector3(run * 0.5, (rise * 0.5) + thickness * 0.5, 0.0)
 	slab.position = origin + Basis(Vector3.UP, deg_to_rad(yaw_deg)) * local_mid

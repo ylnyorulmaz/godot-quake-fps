@@ -6,9 +6,11 @@ This is original code. It is not affiliated with id Software and does not includ
 
 ## Run
 
-1. Install [Godot 4.7](https://godotengine.org/download) (Forward+).
+1. Install [Godot 4.7](https://godotengine.org/download) (the project uses the **Compatibility** renderer so it opens on more GPUs).
 2. Open this folder (`project.godot`). Godot 4.7 should not ask to upgrade the project version.
 3. Press **F5**. Input actions are registered at runtime by `scripts/input_bindings.gd`.
+
+If the editor still fails to open, start Godot from a terminal to see the error, and make sure you are using **4.7** (not 4.3/4.4). The project starts windowed; press **F11** for fullscreen.
 
 ## Player node tree
 

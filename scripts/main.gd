@@ -17,6 +17,15 @@ func _ready() -> void:
 	_world.name = "World"
 	_world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_world)
+	_build_menu()
+	_build_end()
+	GameState.match_ended.connect(_on_match_ended)
+	call_deferred("_spawn_arena")
+
+
+func _spawn_arena() -> void:
+	if _world.get_node_or_null("ArenaGenerator") != null:
+		return
 	var arena: Node3D = null
 	var packed := load("res://scenes/arena_generator.tscn") as PackedScene
 	if packed != null:
@@ -26,9 +35,6 @@ func _ready() -> void:
 		arena = gen_script.new() as Node3D
 	arena.name = "ArenaGenerator"
 	_world.add_child(arena)
-	_build_menu()
-	_build_end()
-	GameState.match_ended.connect(_on_match_ended)
 
 
 func _unhandled_input(event: InputEvent) -> void:
