@@ -109,7 +109,11 @@ func _start_match() -> void:
 	_menu.visible = false
 	GameState.reset_match()
 	_clear_actors()
-	_player = Player.new()
+	var packed := load("res://scenes/player.tscn") as PackedScene
+	if packed != null:
+		_player = packed.instantiate() as Player
+	else:
+		_player = Player.new()
 	_player.name = "Player"
 	_player.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_player)

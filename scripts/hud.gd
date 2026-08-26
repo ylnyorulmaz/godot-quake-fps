@@ -56,7 +56,7 @@ func _ready() -> void:
 	_hint = _label(Vector2(16, -28), 16, Color(0.6, 0.6, 0.55), HORIZONTAL_ALIGNMENT_LEFT)
 	_hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_hint.position = Vector2(16, -28)
-	_hint.text = "WASD  mouse  SPACE jump  CTRL crouch  1-4 weapons  ESC menu"
+	_hint.text = "WASD  mouse  SPACE jump  SHIFT sprint  CTRL crouch  LMB fire  1-4 / wheel  ESC"
 
 	_scoreboard = Label.new()
 	_scoreboard.visible = false

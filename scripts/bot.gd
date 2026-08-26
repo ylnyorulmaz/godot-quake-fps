@@ -7,6 +7,7 @@ var bot_name := "Bot"
 var health := 100.0
 var armor := 25.0
 var weapons: WeaponManager
+var _move := QuakeMoveParams.new()
 var _alive := true
 var _target: Node3D
 var _wander: Vector3
@@ -90,7 +91,7 @@ func _physics_process(delta: float) -> void:
 		if randf() < 0.01:
 			jumping = true
 
-	QuakeMovement.move(self, wish, jumping, false, delta)
+	QuakeMovement.move(self, wish, jumping, false, false, delta, _move)
 
 	if wish.length_squared() > 0.01:
 		var look := atan2(-wish.x, -wish.z)
