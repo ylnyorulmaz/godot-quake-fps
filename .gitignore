@@ -1,0 +1,24 @@
+# Godot 4+
+.godot/
+*.translation
+.import/
+
+# Exports
+export.cfg
+*.apk
+*.aab
+*.ipa
+*.app
+*.exe
+*.pck
+*.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*~
+.vscode/
+.idea/
