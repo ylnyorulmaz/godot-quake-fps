@@ -63,13 +63,14 @@ func _bake_navigation() -> void:
 		return
 	var mesh := NavigationMesh.new()
 	mesh.agent_radius = 0.4
-	mesh.agent_height = 1.8
-	mesh.agent_max_climb = 0.55
+	mesh.agent_height = 1.75
+	mesh.agent_max_climb = 0.5
 	mesh.agent_max_slope = 50.0
-	mesh.cell_size = 0.4
+	# Must match the default navigation map (ProjectSettings / 0.25).
+	mesh.cell_size = 0.25
 	mesh.cell_height = 0.25
 	if "border_size" in mesh:
-		mesh.border_size = 0.4
+		mesh.border_size = 0.5
 	if "geometry_parsed_geometry_type" in mesh:
 		mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_BOTH
 	elif "parsed_geometry_type" in mesh:
