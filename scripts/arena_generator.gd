@@ -62,7 +62,7 @@ func _bake_navigation() -> void:
 	if _nav_region == null:
 		return
 	var mesh := NavigationMesh.new()
-	mesh.agent_radius = 0.4
+	mesh.agent_radius = 0.5
 	mesh.agent_height = 1.75
 	mesh.agent_max_climb = 0.5
 	mesh.agent_max_slope = 50.0
