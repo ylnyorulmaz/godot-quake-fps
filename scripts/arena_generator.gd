@@ -9,7 +9,8 @@ extends Node3D
 ##
 ## Tree:
 ##   ArenaGenerator (this)
-##     CSGCombiner3D
+##     NavigationRegion3D
+##       CSGCombiner3D
 ##     JumpPadsContainer
 ##     MegaHealth, spawn markers, lights, extra pickups
 
@@ -26,11 +27,13 @@ const HALLWAY_HEIGHT := 3.6
 
 var _combiner: CSGCombiner3D
 var _pads: Node3D
+var _nav_region: NavigationRegion3D
 var _tex_cache: Dictionary = {}
 
 
 func _ready() -> void:
 	_build()
+	_bake_navigation()
 
 
 func _build() -> void:
@@ -51,17 +54,70 @@ func _build() -> void:
 	_labels()
 
 
+func _bake_navigation() -> void:
+	## Wait until CSG collision meshes exist, then bake a navmesh that wraps
+	## the arena so NavigationAgent3D bots can path the floor, ramps, and halls.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if _nav_region == null:
+		return
+	var mesh := NavigationMesh.new()
+	mesh.agent_radius = 0.4
+	mesh.agent_height = 1.8
+	mesh.agent_max_climb = 0.55
+	mesh.agent_max_slope = 50.0
+	mesh.cell_size = 0.4
+	mesh.cell_height = 0.25
+	if "border_size" in mesh:
+		mesh.border_size = 0.4
+	if "geometry_parsed_geometry_type" in mesh:
+		mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_BOTH
+	elif "parsed_geometry_type" in mesh:
+		mesh.parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_BOTH
+	if "geometry_collision_mask" in mesh:
+		mesh.geometry_collision_mask = 1
+	_nav_region.navigation_mesh = mesh
+	if _nav_region.has_method("bake_navigation_mesh"):
+		_nav_region.bake_navigation_mesh(false)
+	else:
+		var src := NavigationMeshSourceGeometryData3D.new()
+		NavigationServer3D.parse_source_geometry_data(mesh, src, _nav_region)
+		NavigationServer3D.bake_from_source_geometry_data(mesh, src)
+		_nav_region.navigation_mesh = mesh
+
+
 func _ensure_containers() -> void:
-	_combiner = get_node_or_null("CSGCombiner3D") as CSGCombiner3D
+	_nav_region = get_node_or_null("NavigationRegion3D") as NavigationRegion3D
+	if _nav_region == null:
+		_nav_region = NavigationRegion3D.new()
+		_nav_region.name = "NavigationRegion3D"
+		add_child(_nav_region)
+
+	_combiner = get_node_or_null("NavigationRegion3D/CSGCombiner3D") as CSGCombiner3D
+	if _combiner == null:
+		_combiner = get_node_or_null("CSGCombiner3D") as CSGCombiner3D
 	if _combiner == null:
 		_combiner = CSGCombiner3D.new()
 		_combiner.name = "CSGCombiner3D"
-		add_child(_combiner)
+		_nav_region.add_child(_combiner)
+	elif _combiner.get_parent() != _nav_region:
+		_combiner.reparent(_nav_region)
 	_combiner.use_collision = true
 	_combiner.collision_layer = 1
 	_combiner.collision_mask = 0
 	if "autosmooth" in _combiner:
 		_combiner.autosmooth = true
+
+	# Invisible parse source so the floor stays walkable even if CSG bake is thin.
+	if _nav_region.get_node_or_null("NavFloor") == null:
+		var floor_mesh := MeshInstance3D.new()
+		floor_mesh.name = "NavFloor"
+		var plane := PlaneMesh.new()
+		plane.size = Vector2(FLOOR_SIZE - 2.0, FLOOR_SIZE - 2.0)
+		floor_mesh.mesh = plane
+		floor_mesh.position.y = 0.02
+		floor_mesh.visible = false
+		_nav_region.add_child(floor_mesh)
 
 	_pads = get_node_or_null("JumpPadsContainer") as Node3D
 	if _pads == null:
@@ -322,7 +378,7 @@ func _ramp_polygon(origin: Vector3, run: float, angle_deg: float, width: float, 
 	slab.use_collision = true
 	slab.collision_layer = 1
 	slab.collision_mask = 0
-	add_child(slab)
+	_nav_region.add_child(slab)
 	slab.rotation_degrees.y = yaw_deg
 	var local_mid := Vector3(run * 0.5, (rise * 0.5) + thickness * 0.5, 0.0)
 	slab.position = origin + Basis(Vector3.UP, deg_to_rad(yaw_deg)) * local_mid

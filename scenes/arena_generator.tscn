@@ -5,7 +5,9 @@
 [node name="ArenaGenerator" type="Node3D"]
 script = ExtResource("1_script")
 
-[node name="CSGCombiner3D" type="CSGCombiner3D" parent="."]
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+
+[node name="CSGCombiner3D" type="CSGCombiner3D" parent="NavigationRegion3D"]
 use_collision = true
 collision_layer = 1
 

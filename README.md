@@ -53,6 +53,16 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 - 100×100 grid floor, ramps at 15° / 30° / 45°, strafe-gap platforms (4–12 units), enclosed speed hallway
 - Jump pads (`scenes/jump_pad.tscn`) and a respawning Mega-Health (`scenes/mega_health.tscn`)
 - Spawn / nav markers so deathmatch still runs on the same map
+- `NavigationRegion3D` wraps the CSG hull; a navmesh is baked at runtime for bots
+
+## Combat bots
+
+`EnemyBot` (`scripts/enemy_bot.gd`, `scenes/enemy_bot.tscn`) is a `CharacterBody3D` with `NavigationAgent3D`, a LOS `RayCast3D`, `ShootTimer`, and `HealthComponent`.
+
+- Chases the player via `get_next_path_position()` with acceleration + gravity
+- On line-of-sight, stops following the path and strafes while firing a hitscan (spread from `accuracy_error`)
+- Exports: `movement_speed`, `attack_cooldown`, `vision_range`, `accuracy_error`
+- Missing or dead players are ignored; the bot wanders nav points instead
 
 ## Health and armor
 

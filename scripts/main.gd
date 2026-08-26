@@ -5,7 +5,7 @@ var _player: Player
 var _menu: Control
 var _end: Control
 var _hud: HUD
-var _bots: Array[ArenaBot] = []
+var _bots: Array[EnemyBot] = []
 const BOT_COUNT := 3
 const BOT_NAMES := ["Grunt", "Ranger", "Visl"]
 const BOT_COLORS := [Color(0.75, 0.18, 0.15), Color(0.2, 0.45, 0.8), Color(0.55, 0.2, 0.7)]
@@ -134,10 +134,17 @@ func _start_match() -> void:
 
 	_bots.clear()
 	for i in BOT_COUNT:
-		var bot := ArenaBot.new()
+		var bot: EnemyBot
+		var bot_packed := load("res://scenes/enemy_bot.tscn") as PackedScene
+		if bot_packed != null:
+			bot = bot_packed.instantiate() as EnemyBot
+		else:
+			var bot_script: Script = load("res://scripts/enemy_bot.gd")
+			bot = bot_script.new() as EnemyBot
 		bot.bot_name = BOT_NAMES[i]
 		bot.color = BOT_COLORS[i]
 		bot.name = BOT_NAMES[i]
+		bot.player_path = NodePath("../Player")
 		bot.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(bot)
 		bot.respawn_at(_spawn_pos())
@@ -181,26 +188,26 @@ func _spawn_pos() -> Vector3:
 
 
 func _on_player_died(killer: Node) -> void:
-	var killer_name := "world"
-	if killer is ArenaBot:
-		killer_name = (killer as ArenaBot).bot_name
-	GameState.add_frag(killer_name, "YOU", false, true)
+	GameState.add_frag(_actor_name(killer), "YOU", false, true)
 	await get_tree().create_timer(1.6).timeout
 	if is_instance_valid(_player) and GameState.match_running:
 		_player.respawn_at(_spawn_pos())
 
 
-func _on_bot_died(killer: Node, bot: ArenaBot) -> void:
-	var killer_name := "world"
+func _on_bot_died(killer: Node, bot: EnemyBot) -> void:
 	var is_player := killer == _player
-	if is_player:
-		killer_name = "YOU"
-	elif killer is ArenaBot:
-		killer_name = (killer as ArenaBot).bot_name
-	GameState.add_frag(killer_name, bot.bot_name, is_player, false)
+	GameState.add_frag(_actor_name(killer), bot.bot_name, is_player, false)
 	await get_tree().create_timer(1.8).timeout
 	if is_instance_valid(bot) and GameState.match_running:
 		bot.respawn_at(_spawn_pos())
+
+
+func _actor_name(node: Node) -> String:
+	if node == _player:
+		return "YOU"
+	if node != null and is_instance_valid(node) and "bot_name" in node:
+		return str(node.bot_name)
+	return "world"
 
 
 func _toggle_pause() -> void:
