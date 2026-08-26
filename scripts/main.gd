@@ -22,7 +22,8 @@ func _ready() -> void:
 	if packed != null:
 		arena = packed.instantiate() as Node3D
 	else:
-		arena = ArenaGenerator.new()
+		var gen_script: Script = load("res://scripts/arena_generator.gd")
+		arena = gen_script.new() as Node3D
 	arena.name = "ArenaGenerator"
 	_world.add_child(arena)
 	_build_menu()

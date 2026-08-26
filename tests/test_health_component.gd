@@ -2,6 +2,8 @@ extends SceneTree
 ## Headless checks for 60/40 armor split and mega-health clamp.
 ## Run: godot --headless --path . -s res://tests/test_health_component.gd
 
+const HealthScript := preload("res://scripts/health_component.gd")
+
 
 func _init() -> void:
 	var failed := 0
@@ -18,7 +20,7 @@ func _init() -> void:
 
 
 func _expect_hit(hp: float, armor: float, dmg: float, want_hp: float, want_armor: float, label: String) -> int:
-	var h := HealthComponent.new()
+	var h = HealthScript.new()
 	h.current_health = hp
 	h.current_armor = armor
 	h.take_damage(dmg)
@@ -30,7 +32,7 @@ func _expect_hit(hp: float, armor: float, dmg: float, want_hp: float, want_armor
 
 
 func _expect_mega() -> int:
-	var h := HealthComponent.new()
+	var h = HealthScript.new()
 	h.current_health = 100.0
 	if not h.apply_mega_health(100.0) or absf(h.current_health - 200.0) > 0.01:
 		push_error("mega health did not clamp to 200")

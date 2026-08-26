@@ -132,8 +132,8 @@ func _ramps() -> void:
 		# Landing shelf at the top so you can stand, turn around, and run down.
 		var rise := RAMP_RUN * tan(deg_to_rad(angle))
 		_csg_box(
-			Vector3(origin_x + RAMP_RUN + 3.0, (rise + 0.4) * 0.5, z),
-			Vector3(6.0, rise + 0.4, RAMP_WIDTH),
+			Vector3(origin_x + RAMP_RUN + 3.0, rise * 0.5, z),
+			Vector3(6.0, rise, RAMP_WIDTH),
 			_grid_mat(colors[i], colors[i].lightened(0.18))
 		)
 
@@ -309,24 +309,24 @@ func _billboard(pos: Vector3, text: String) -> void:
 
 
 func _ramp_polygon(origin: Vector3, run: float, angle_deg: float, width: float, yaw_deg: float, color: Color) -> void:
-	## Walkable ramp slab via CSGPolygon3D (extruded quad).
-	## Low edge at local x = 0, high edge at local x = run.
+	## Walkable slope as a CSGBox3D slab rotated to `angle_deg`.
+	## (CSGPolygon3D wedges are valid visually in-editor but Godot's CSG brush
+	## pass often drops the extruded triangle, so the box is the collision source.)
 	var rise := run * tan(deg_to_rad(angle_deg))
+	var angle := deg_to_rad(angle_deg)
 	var thickness := 0.4
-	var poly := CSGPolygon3D.new()
-	poly.mode = CSGPolygon3D.MODE_DEPTH
-	poly.depth = width
-	poly.polygon = PackedVector2Array([
-		Vector2(0.0, 0.0),
-		Vector2(run, 0.0),
-		Vector2(run, rise + thickness),
-		Vector2(0.0, thickness),
-	])
-	poly.material = _grid_mat(color, color.lightened(0.2))
-	_combiner.add_child(poly)
-	poly.rotation_degrees.y = yaw_deg
-	poly.position = origin
-	poly.translate_object_local(Vector3(0.0, 0.0, width * 0.5))
+	var slab := CSGBox3D.new()
+	slab.size = Vector3(run, thickness, width)
+	slab.material = _grid_mat(color, color.lightened(0.2))
+	# Rotated brushes cannot live inside CSGCombiner3D (Godot drops faces).
+	slab.use_collision = true
+	slab.collision_layer = 1
+	slab.collision_mask = 0
+	add_child(slab)
+	slab.rotation_degrees.y = yaw_deg
+	var local_mid := Vector3(run * 0.5, (rise * 0.5) + thickness * 0.5, 0.0)
+	slab.position = origin + Basis(Vector3.UP, deg_to_rad(yaw_deg)) * local_mid
+	slab.rotate_object_local(Vector3.RIGHT, -angle)
 
 
 func _csg_box(center: Vector3, size: Vector3, mat: Material) -> CSGBox3D:

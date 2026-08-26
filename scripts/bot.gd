@@ -93,15 +93,15 @@ func _physics_process(delta: float) -> void:
 
 	QuakeMovement.move(self, wish, jumping, false, false, delta, _move)
 
-
-func launch(impulse: Vector3) -> void:
-	velocity = impulse
-
 	if wish.length_squared() > 0.01:
 		var look := atan2(-wish.x, -wish.z)
 		rotation.y = lerp_angle(rotation.y, look, 8.0 * delta)
 
 	_try_shoot(delta)
+
+
+func launch(impulse: Vector3) -> void:
+	velocity = impulse
 
 
 func _destination() -> Vector3:
