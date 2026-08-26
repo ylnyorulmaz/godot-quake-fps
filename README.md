@@ -65,6 +65,18 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 - On line-of-sight, stops following the path and strafes while firing a hitscan (spread from `accuracy_error`)
 - Exports: `movement_speed`, `attack_cooldown`, `vision_range`, `accuracy_error`
 - Missing or dead players are ignored; the bot wanders nav points instead
+- **Tripo / custom mesh:** drop `assets/models/orc.glb` (see below). Capsules hide; collision stays the 1.8 m capsule.
+
+## Custom 3D model (Tripo Studio)
+
+1. In [Tripo Studio](https://studio.tripo3d.ai/) export the orc as **GLB** (textures included).
+2. Copy the file to `assets/models/orc.glb` in this project.
+3. Open the project in Godot **4.7.2** and wait for the Import dock to finish.
+4. Press **F5**. Bots load that file automatically (`EnemyBot.model_path`).
+
+If the mesh faces the wrong way, set **Model Yaw Degrees** on `EnemyBot` (default **180**, because Godot characters look down −Z). Height is scaled uniformly to `target_height` (1.8 m) with feet on the floor.
+
+More detail: `assets/models/README.md`. Inspector alternatives: assign `model_scene`, or point `model_path` at another `.glb` / `.gltf` / `.tscn`.
 
 ## Health and armor
 

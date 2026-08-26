@@ -9,13 +9,22 @@ extends CharacterBody3D
 ##     RayCast3D
 ##     ShootTimer
 ##     HealthComponent
-##     BodyMesh
+##     BodyMesh / HeadMesh (hidden when a Tripo GLB is present)
+##     VisualModel (optional imported mesh)
 
 signal died(killer: Node)
 
 @export_category("Identity")
 @export var bot_name: String = "Bot"
 @export var color: Color = Color(0.75, 0.18, 0.15)
+
+@export_category("Visual")
+## Drag a PackedScene here, or leave empty and drop `orc.glb` in assets/models/.
+@export var model_scene: PackedScene
+@export var model_path: String = "res://assets/models/orc.glb"
+@export var target_height: float = 1.8
+## Godot characters face -Z. Tripo/Blender meshes often face +Z.
+@export var model_yaw_degrees: float = 180.0
 
 @export_category("Movement")
 @export var movement_speed: float = 8.0
@@ -53,6 +62,7 @@ var _agent: NavigationAgent3D
 var _los: RayCast3D
 var _shoot_timer: Timer
 var _mesh: MeshInstance3D
+var _visual: Node3D
 var _player: Node3D
 var _alive := true
 var _has_los := false
@@ -73,6 +83,7 @@ func _ready() -> void:
 	motion_mode = MOTION_MODE_GROUNDED
 	_ensure_tree()
 	_cache_nodes()
+	_attach_imported_visual()
 	_configure_agent()
 	_configure_los()
 	_configure_timer()
@@ -138,7 +149,30 @@ func _cache_nodes() -> void:
 	_apply_color()
 
 
+func _attach_imported_visual() -> void:
+	if get_node_or_null("VisualModel") != null:
+		_visual = get_node_or_null("VisualModel") as Node3D
+		_hide_placeholder_meshes()
+		return
+	var packed := ImportedModel.load_packed(model_scene, model_path)
+	if packed == null:
+		return
+	_visual = ImportedModel.instantiate_under(self, packed, target_height, model_yaw_degrees)
+	if _visual == null:
+		return
+	_hide_placeholder_meshes()
+
+
+func _hide_placeholder_meshes() -> void:
+	for mesh_name in ["BodyMesh", "HeadMesh"]:
+		var node := get_node_or_null(mesh_name) as Node3D
+		if node:
+			node.visible = false
+
+
 func _apply_color() -> void:
+	if _visual != null:
+		return
 	if _mesh:
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = color
@@ -504,9 +538,48 @@ func is_alive() -> bool:
 
 
 func _flash_hurt() -> void:
+	if _visual != null:
+		_flash_imported()
+		return
 	if _mesh == null or not (_mesh.material_override is StandardMaterial3D):
 		return
 	var mat := _mesh.material_override as StandardMaterial3D
 	mat.emission_enabled = true
 	mat.emission = Color(1.0, 0.2, 0.1)
 	mat.emission_energy_multiplier = 2.0
+
+
+func _flash_imported() -> void:
+	if _visual == null:
+		return
+	var overlay := StandardMaterial3D.new()
+	overlay.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	overlay.albedo_color = Color(1.0, 0.25, 0.12, 0.45)
+	overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var meshes: Array[MeshInstance3D] = []
+	_collect_meshes(_visual, meshes)
+	for mesh in meshes:
+		mesh.material_overlay = overlay
+	if not is_inside_tree():
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	await tree.create_timer(0.12).timeout
+	if not is_instance_valid(self):
+		return
+	for mesh in meshes:
+		if is_instance_valid(mesh) and mesh.material_overlay == overlay:
+			mesh.material_overlay = null
+
+
+func _collect_meshes(root: Node, out: Array[MeshInstance3D]) -> void:
+	if root == null:
+		return
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		for child in node.get_children():
+			stack.append(child)
+		if node is MeshInstance3D:
+			out.append(node)
