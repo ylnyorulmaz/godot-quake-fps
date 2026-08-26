@@ -1,0 +1,434 @@
+class_name ArenaGenerator
+extends Node3D
+## Procedural CSG movement-test arena.
+##
+## Built for Quake-style ground speed, slope physics, strafe-jump distance,
+## enclosed speed/FOV checks, and jump-pad launches. Geometry is generated
+## in `_ready()` so instancing this node (or opening its scene) produces a
+## complete blockout immediately.
+##
+## Tree:
+##   ArenaGenerator (this)
+##     NavigationRegion3D
+##       CSGCombiner3D
+##     JumpPadsContainer
+##     MegaHealth, spawn markers, lights, extra pickups
+
+const FLOOR_SIZE := 100.0
+const RAMP_RUN := 18.0
+const RAMP_WIDTH := 6.0
+const RAMP_ANGLES := [15.0, 30.0, 45.0]
+const GAP_WIDTHS := [4.0, 6.0, 8.0, 10.0, 12.0]
+const PLATFORM_SIZE := Vector3(8.0, 1.0, 8.0)
+const PLATFORM_HEIGHT := 4.0
+const HALLWAY_LENGTH := 72.0
+const HALLWAY_WIDTH := 4.0
+const HALLWAY_HEIGHT := 3.6
+
+var _combiner: CSGCombiner3D
+var _pads: Node3D
+var _nav_region: NavigationRegion3D
+var _tex_cache: Dictionary = {}
+
+
+func _ready() -> void:
+	_build()
+	_bake_navigation()
+
+
+func _build() -> void:
+	add_to_group("world_root")
+	_environment()
+	_ensure_containers()
+	_floor_and_hull()
+	_ramps()
+	_gap_course()
+	_hallway()
+	_cover()
+	_jump_pads()
+	_mega_health()
+	_pickups()
+	_spawns()
+	_nav_points()
+	_lights()
+	_labels()
+
+
+func _bake_navigation() -> void:
+	## Wait until CSG collision meshes exist, then bake a navmesh that wraps
+	## the arena so NavigationAgent3D bots can path the floor, ramps, and halls.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if _nav_region == null:
+		return
+	var mesh := NavigationMesh.new()
+	mesh.agent_radius = 0.5
+	mesh.agent_height = 1.75
+	mesh.agent_max_climb = 0.5
+	mesh.agent_max_slope = 50.0
+	# Must match the default navigation map (ProjectSettings / 0.25).
+	mesh.cell_size = 0.25
+	mesh.cell_height = 0.25
+	if "border_size" in mesh:
+		mesh.border_size = 0.5
+	if "geometry_parsed_geometry_type" in mesh:
+		mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_BOTH
+	elif "parsed_geometry_type" in mesh:
+		mesh.parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_BOTH
+	if "geometry_collision_mask" in mesh:
+		mesh.geometry_collision_mask = 1
+	_nav_region.navigation_mesh = mesh
+	if _nav_region.has_method("bake_navigation_mesh"):
+		_nav_region.bake_navigation_mesh(false)
+	else:
+		var src := NavigationMeshSourceGeometryData3D.new()
+		NavigationServer3D.parse_source_geometry_data(mesh, src, _nav_region)
+		NavigationServer3D.bake_from_source_geometry_data(mesh, src)
+		_nav_region.navigation_mesh = mesh
+
+
+func _ensure_containers() -> void:
+	_nav_region = get_node_or_null("NavigationRegion3D") as NavigationRegion3D
+	if _nav_region == null:
+		_nav_region = NavigationRegion3D.new()
+		_nav_region.name = "NavigationRegion3D"
+		add_child(_nav_region)
+
+	_combiner = get_node_or_null("NavigationRegion3D/CSGCombiner3D") as CSGCombiner3D
+	if _combiner == null:
+		_combiner = get_node_or_null("CSGCombiner3D") as CSGCombiner3D
+	if _combiner == null:
+		_combiner = CSGCombiner3D.new()
+		_combiner.name = "CSGCombiner3D"
+		_nav_region.add_child(_combiner)
+	elif _combiner.get_parent() != _nav_region:
+		_combiner.reparent(_nav_region)
+	_combiner.use_collision = true
+	_combiner.collision_layer = 1
+	_combiner.collision_mask = 0
+	if "autosmooth" in _combiner:
+		_combiner.autosmooth = true
+
+	# Invisible parse source so the floor stays walkable even if CSG bake is thin.
+	if _nav_region.get_node_or_null("NavFloor") == null:
+		var floor_mesh := MeshInstance3D.new()
+		floor_mesh.name = "NavFloor"
+		var plane := PlaneMesh.new()
+		plane.size = Vector2(FLOOR_SIZE - 2.0, FLOOR_SIZE - 2.0)
+		floor_mesh.mesh = plane
+		floor_mesh.position.y = 0.02
+		floor_mesh.visible = false
+		_nav_region.add_child(floor_mesh)
+
+	_pads = get_node_or_null("JumpPadsContainer") as Node3D
+	if _pads == null:
+		_pads = Node3D.new()
+		_pads.name = "JumpPadsContainer"
+		add_child(_pads)
+
+
+func _environment() -> void:
+	if get_node_or_null("WorldEnvironment") != null:
+		return
+	var we := WorldEnvironment.new()
+	we.name = "WorldEnvironment"
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.035, 0.04, 0.05)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.28, 0.3, 0.34)
+	env.ambient_light_energy = 0.45
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.08, 0.09, 0.1)
+	env.fog_density = 0.008
+	env.glow_enabled = true
+	env.glow_intensity = 0.45
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	we.environment = env
+	add_child(we)
+
+	var sun := DirectionalLight3D.new()
+	sun.name = "Sun"
+	sun.rotation_degrees = Vector3(-48, 40, 0)
+	sun.light_color = Color(1.0, 0.92, 0.82)
+	sun.light_energy = 0.85
+	sun.shadow_enabled = true
+	add_child(sun)
+
+
+func _floor_and_hull() -> void:
+	# Massive test floor: top face sits on y = 0.
+	_csg_box(Vector3(0, -0.5, 0), Vector3(FLOOR_SIZE, 1.0, FLOOR_SIZE), _mat_floor())
+	# Perimeter walls keep rocket-jumps and overshoots inside the volume.
+	var wall := _mat_wall()
+	var h := 16.0
+	var half := FLOOR_SIZE * 0.5 + 0.5
+	_csg_box(Vector3(0, h * 0.5, -half), Vector3(FLOOR_SIZE + 1.0, h, 1.0), wall)
+	_csg_box(Vector3(0, h * 0.5, half), Vector3(FLOOR_SIZE + 1.0, h, 1.0), wall)
+	_csg_box(Vector3(-half, h * 0.5, 0), Vector3(1.0, h, FLOOR_SIZE + 1.0), wall)
+	_csg_box(Vector3(half, h * 0.5, 0), Vector3(1.0, h, FLOOR_SIZE + 1.0), wall)
+	# Ceiling so the hallway FOV test has a consistent sky/indoor contrast.
+	_csg_box(Vector3(0, h, 0), Vector3(FLOOR_SIZE + 1.0, 1.0, FLOOR_SIZE + 1.0), _mat_ceiling())
+
+
+func _ramps() -> void:
+	## Three side-by-side ramps: 15°, 30°, 45°. Walk up and down to feel
+	## ground friction, air-control, and slope-launch differences.
+	var origin_x := 8.0
+	var z0 := -32.0
+	var spacing := RAMP_WIDTH + 2.0
+	var colors := [
+		Color(0.22, 0.55, 0.28),
+		Color(0.75, 0.55, 0.12),
+		Color(0.78, 0.22, 0.14),
+	]
+	for i in RAMP_ANGLES.size():
+		var angle: float = RAMP_ANGLES[i]
+		var z := z0 + float(i) * spacing
+		_ramp_polygon(Vector3(origin_x, 0.0, z), RAMP_RUN, angle, RAMP_WIDTH, 0.0, colors[i])
+		# Landing shelf at the top so you can stand, turn around, and run down.
+		var rise := RAMP_RUN * tan(deg_to_rad(angle))
+		_csg_box(
+			Vector3(origin_x + RAMP_RUN + 3.0, rise * 0.5, z),
+			Vector3(6.0, rise, RAMP_WIDTH),
+			_grid_mat(colors[i], colors[i].lightened(0.18))
+		)
+
+
+func _gap_course() -> void:
+	## Elevated platforms with growing gaps (4 → 12). Strafe-jump across;
+	## falling lands on the main floor so the test can be repeated quickly.
+	var x := -30.0
+	var z := 6.0
+	var plat_len := PLATFORM_SIZE.z
+	var mat := _grid_mat(Color(0.18, 0.32, 0.62), Color(0.28, 0.48, 0.85))
+	_csg_box(Vector3(x, PLATFORM_HEIGHT - PLATFORM_SIZE.y * 0.5, z), PLATFORM_SIZE, mat)
+	for gap in GAP_WIDTHS:
+		z += plat_len * 0.5 + gap + plat_len * 0.5
+		_csg_box(Vector3(x, PLATFORM_HEIGHT - PLATFORM_SIZE.y * 0.5, z), PLATFORM_SIZE, mat)
+	# Staircase onto the first platform so you do not need a pad to start.
+	_ramp_polygon(Vector3(x - PLATFORM_SIZE.x * 0.5 - 10.0, 0.0, 6.0), 10.0, rad_to_deg(atan(PLATFORM_HEIGHT / 10.0)), PLATFORM_SIZE.x, 0.0, Color(0.2, 0.36, 0.7))
+
+
+func _hallway() -> void:
+	## Narrow enclosed corridor along +X. Sprint / bhop through it to judge
+	## speed perception and the player's dynamic FOV ceiling.
+	var wall_mat := _grid_mat(Color(0.45, 0.16, 0.12), Color(0.62, 0.22, 0.16))
+	var ceil_mat := _grid_mat(Color(0.12, 0.12, 0.14), Color(0.2, 0.2, 0.22))
+	var floor_mat := _grid_mat(Color(0.55, 0.5, 0.18), Color(0.75, 0.68, 0.22))
+	var z := 36.0
+	var x_mid := 0.0
+	var half_w := HALLWAY_WIDTH * 0.5
+	# Distinct floor stripe so the corridor reads as a speed trap.
+	_csg_box(Vector3(x_mid, 0.06, z), Vector3(HALLWAY_LENGTH, 0.12, HALLWAY_WIDTH), floor_mat)
+	# Walls
+	_csg_box(
+		Vector3(x_mid, HALLWAY_HEIGHT * 0.5, z - half_w - 0.25),
+		Vector3(HALLWAY_LENGTH, HALLWAY_HEIGHT, 0.5),
+		wall_mat
+	)
+	_csg_box(
+		Vector3(x_mid, HALLWAY_HEIGHT * 0.5, z + half_w + 0.25),
+		Vector3(HALLWAY_LENGTH, HALLWAY_HEIGHT, 0.5),
+		wall_mat
+	)
+	# Ceiling
+	_csg_box(
+		Vector3(x_mid, HALLWAY_HEIGHT + 0.15, z),
+		Vector3(HALLWAY_LENGTH, 0.3, HALLWAY_WIDTH + 1.0),
+		ceil_mat
+	)
+	# Far cap
+	_csg_box(
+		Vector3(HALLWAY_LENGTH * 0.5 - 0.25, HALLWAY_HEIGHT * 0.5, z),
+		Vector3(0.5, HALLWAY_HEIGHT, HALLWAY_WIDTH + 1.0),
+		wall_mat
+	)
+
+
+func _cover() -> void:
+	var crate := _grid_mat(Color(0.4, 0.28, 0.12), Color(0.55, 0.38, 0.16))
+	for p in [Vector3(18, 1.0, 12), Vector3(-12, 1.0, -8), Vector3(22, 1.0, -18), Vector3(-22, 1.0, 18)]:
+		_csg_box(p, Vector3(2.4, 2.0, 2.4), crate)
+
+
+func _jump_pads() -> void:
+	# Vertical pop — rocket-jump alternative / height check.
+	_add_pad(Vector3(0.0, 0.08, 0.0), Vector3(0, 22, 0), 0.0)
+	# Aimed at the gap course start.
+	_add_pad(Vector3(-18.0, 0.08, -4.0), Vector3(-8, 14, 10), 0.0)
+	# Hallway injector: long, low launch so you enter already at speed.
+	_add_pad(Vector3(-40.0, 0.08, 36.0), Vector3(28, 6, 0), 0.0)
+	# Top of the 45° ramp — extra height for air-control practice.
+	var rise45 := RAMP_RUN * tan(deg_to_rad(45.0))
+	_add_pad(Vector3(8.0 + RAMP_RUN + 3.0, rise45 + 0.08, -32.0 + 2.0 * (RAMP_WIDTH + 2.0)), Vector3(-4, 16, 0), 0.0)
+
+
+func _add_pad(pos: Vector3, boost: Vector3, yaw_deg: float) -> void:
+	var packed := load("res://scenes/jump_pad.tscn") as PackedScene
+	var pad: JumpPad
+	if packed != null:
+		pad = packed.instantiate() as JumpPad
+	else:
+		pad = JumpPad.new()
+	pad.boost = boost
+	pad.position = pos
+	pad.rotation_degrees.y = yaw_deg
+	_pads.add_child(pad)
+
+
+func _mega_health() -> void:
+	var packed := load("res://scenes/mega_health.tscn") as PackedScene
+	var item: Node3D
+	if packed != null:
+		item = packed.instantiate() as Node3D
+	else:
+		item = MegaHealth.new()
+	item.position = Vector3(6.0, 1.1, -6.0)
+	add_child(item)
+
+
+func _pickups() -> void:
+	# Keep deathmatch usable while this arena is the active map.
+	_item(Vector3(16, 1.2, 16), Pickup.Kind.ROCKET, 20.0)
+	_item(Vector3(-16, 1.2, 16), Pickup.Kind.SHOTGUN, 15.0)
+	_item(Vector3(16, 1.2, -16), Pickup.Kind.RAIL, 25.0)
+	_item(Vector3(-16, 1.2, -16), Pickup.Kind.ARMOR, 20.0)
+	_item(Vector3(10, 1.2, 36), Pickup.Kind.RL_AMMO, 15.0)
+	_item(Vector3(-10, 1.2, 36), Pickup.Kind.HEALTH, 10.0)
+	_item(Vector3(-30, PLATFORM_HEIGHT + 1.2, 6), Pickup.Kind.MG_AMMO, 10.0)
+
+
+func _item(pos: Vector3, kind: Pickup.Kind, respawn: float) -> void:
+	var p := Pickup.new()
+	p.configure(kind, respawn)
+	p.position = pos
+	add_child(p)
+
+
+func _spawns() -> void:
+	var pts := [
+		Vector3(40, 1.2, 40), Vector3(-40, 1.2, 40), Vector3(40, 1.2, -40),
+		Vector3(-40, 1.2, -40), Vector3(0, 1.2, 20), Vector3(0, 1.2, -20),
+		Vector3(24, 1.2, 0), Vector3(-24, 1.2, 0),
+	]
+	for p in pts:
+		var m := Marker3D.new()
+		m.position = p
+		m.add_to_group("spawn_points")
+		add_child(m)
+
+
+func _nav_points() -> void:
+	var pts := [
+		Vector3(20, 1, 20), Vector3(-20, 1, 20), Vector3(20, 1, -20), Vector3(-20, 1, -20),
+		Vector3(0, 1, 0), Vector3(-30, 5, 20), Vector3(20, 4, -20), Vector3(0, 1, 36),
+	]
+	for p in pts:
+		var m := Marker3D.new()
+		m.position = p
+		m.add_to_group("nav_points")
+		add_child(m)
+
+
+func _lights() -> void:
+	for p in [
+		Vector3(0, 10, 0), Vector3(24, 8, 24), Vector3(-24, 8, 24),
+		Vector3(24, 8, -24), Vector3(-24, 8, -24), Vector3(0, 5, 36),
+		Vector3(16, 8, -20), Vector3(-30, 8, 16),
+	]:
+		var light := OmniLight3D.new()
+		light.position = p
+		light.light_color = Color(1.0, 0.85, 0.7)
+		light.light_energy = 2.4
+		light.omni_range = 24.0
+		add_child(light)
+
+
+func _labels() -> void:
+	_billboard(Vector3(8.0 + RAMP_RUN * 0.5, 2.4, -32.0), "15° RAMP")
+	_billboard(Vector3(8.0 + RAMP_RUN * 0.5, 4.0, -24.0), "30° RAMP")
+	_billboard(Vector3(8.0 + RAMP_RUN * 0.5, 6.0, -16.0), "45° RAMP")
+	_billboard(Vector3(-30.0, PLATFORM_HEIGHT + 2.5, 6.0), "STRAFE GAPS  4–12")
+	_billboard(Vector3(-20.0, 2.8, 36.0), "SPEED HALLWAY")
+
+
+func _billboard(pos: Vector3, text: String) -> void:
+	var lab := Label3D.new()
+	lab.text = text
+	lab.position = pos
+	lab.font_size = 64
+	lab.modulate = Color(1.0, 0.92, 0.45)
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.outline_size = 8
+	lab.outline_modulate = Color(0, 0, 0, 0.85)
+	add_child(lab)
+
+
+func _ramp_polygon(origin: Vector3, run: float, angle_deg: float, width: float, yaw_deg: float, color: Color) -> void:
+	## Walkable slope as a CSGBox3D slab rotated to `angle_deg`.
+	## (CSGPolygon3D wedges are valid visually in-editor but Godot's CSG brush
+	## pass often drops the extruded triangle, so the box is the collision source.)
+	var rise := run * tan(deg_to_rad(angle_deg))
+	var angle := deg_to_rad(angle_deg)
+	var thickness := 0.4
+	var slab := CSGBox3D.new()
+	slab.size = Vector3(run, thickness, width)
+	slab.material = _grid_mat(color, color.lightened(0.2))
+	# Rotated brushes cannot live inside CSGCombiner3D (Godot drops faces).
+	slab.use_collision = true
+	slab.collision_layer = 1
+	slab.collision_mask = 0
+	_nav_region.add_child(slab)
+	slab.rotation_degrees.y = yaw_deg
+	var local_mid := Vector3(run * 0.5, (rise * 0.5) + thickness * 0.5, 0.0)
+	slab.position = origin + Basis(Vector3.UP, deg_to_rad(yaw_deg)) * local_mid
+	slab.rotate_object_local(Vector3.RIGHT, -angle)
+
+
+func _csg_box(center: Vector3, size: Vector3, mat: Material) -> CSGBox3D:
+	var b := CSGBox3D.new()
+	b.size = size
+	b.position = center
+	b.material = mat
+	_combiner.add_child(b)
+	return b
+
+
+func _mat_floor() -> StandardMaterial3D:
+	return _grid_mat(Color(0.16, 0.17, 0.19), Color(0.24, 0.25, 0.28))
+
+
+func _mat_wall() -> StandardMaterial3D:
+	return _grid_mat(Color(0.22, 0.2, 0.18), Color(0.32, 0.28, 0.24))
+
+
+func _mat_ceiling() -> StandardMaterial3D:
+	return _grid_mat(Color(0.1, 0.1, 0.12), Color(0.16, 0.16, 0.18))
+
+
+func _grid_mat(a: Color, b: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = _grid_tex(a, b)
+	mat.uv1_triplanar = true
+	mat.uv1_scale = Vector3(0.35, 0.35, 0.35)
+	mat.roughness = 0.88
+	mat.metallic = 0.02
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	return mat
+
+
+func _grid_tex(a: Color, b: Color) -> ImageTexture:
+	var key := "%s|%s" % [a, b]
+	if _tex_cache.has(key):
+		return _tex_cache[key]
+	const S := 64
+	const CELL := 8
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	for y in S:
+		for x in S:
+			var on := int(x / CELL) % 2 == int(y / CELL) % 2
+			img.set_pixel(x, y, a if on else b)
+	var tex := ImageTexture.create_from_image(img)
+	_tex_cache[key] = tex
+	return tex

@@ -1,48 +1,73 @@
 class_name QuakeMovement
 extends RefCounted
 
-## Quake 3 / CPM-inspired movement: ground accel, friction skip on jump, air-strafe.
+## Quake 3 Arena PMove, scaled to Godot meters.
+##
+## Ground: friction, then accelerate toward MOVE_SPEED. Speed already above the
+## cap (from a bunny hop) is kept — accelerate only adds speed along wishdir
+## when currentspeed < wishspeed.
+##
+## Air: wish speed for accel is clamped to AIR_WISH_SPEED_CAP. Strafing so
+## wishdir is off-axis from velocity makes currentspeed small, so you still
+## add speed and turn — classic strafe-jump / circle-jump.
+##
+## Bunny hop: the landing frame that jumps skips friction entirely so horizontal
+## momentum is not bled off before you leave the ground again.
 
-const GRAVITY := 20.0
-const JUMP_SPEED := 8.6
-const MAX_SPEED := 10.0
-const MAX_AIR_SPEED := 10.0
-const GROUND_ACCEL := 14.0
-const AIR_ACCEL := 3.2
-const AIR_CONTROL := 5.5
-const FRICTION := 6.0
-const STOP_SPEED := 1.6
-const AIR_SPEED_CAP := 2.4
-const CROUCH_SPEED_SCALE := 0.45
 
-
-static func move(body: CharacterBody3D, wish_dir: Vector3, jump_pressed: bool, crouching: bool, delta: float) -> void:
+static func move(
+		body: CharacterBody3D,
+		wish_dir: Vector3,
+		jumping: bool,
+		crouching: bool,
+		sprinting: bool,
+		delta: float,
+		p: QuakeMoveParams,
+		force_air: bool = false
+) -> void:
 	wish_dir.y = 0.0
 	if wish_dir.length_squared() > 1.0:
 		wish_dir = wish_dir.normalized()
+	elif wish_dir.length_squared() > 0.0001:
+		wish_dir = wish_dir.normalized()
 
-	var max_ground := MAX_SPEED * (CROUCH_SPEED_SCALE if crouching else 1.0)
+	var wish_speed := p.MOVE_SPEED
+	if crouching:
+		wish_speed *= p.CROUCH_MULTIPLIER
+	elif sprinting and body.is_on_floor() and not force_air:
+		wish_speed *= p.SPRINT_MULTIPLIER
 
-	if body.is_on_floor():
-		if jump_pressed and not crouching:
-			body.velocity.y = JUMP_SPEED
-			_air_accelerate(body, wish_dir, MAX_AIR_SPEED, delta)
+	# Jump pads / explosions set force_air so floor friction cannot eat the launch.
+	var grounded := body.is_on_floor() and not force_air
+	if grounded:
+		if jumping and not crouching:
+			# Exact landing hop: no friction this frame.
+			body.velocity.y = p.JUMP_FORCE
+			_air_accelerate(body, wish_dir, wish_speed, delta, p)
 		else:
-			_friction(body, delta)
-			_accelerate(body, wish_dir, max_ground, GROUND_ACCEL, delta)
+			_friction(body, delta, p)
+			_accelerate(body, wish_dir, wish_speed, p.ACCELERATION, delta)
 			if body.velocity.y < 0.0:
 				body.velocity.y = 0.0
 	else:
-		_air_accelerate(body, wish_dir, MAX_AIR_SPEED, delta)
-		_air_control(body, wish_dir, delta)
-		body.velocity.y -= GRAVITY * delta
+		_air_accelerate(body, wish_dir, wish_speed, delta, p)
+		body.velocity.y -= p.GRAVITY * delta
+		if body.velocity.y < -p.TERMINAL_VELOCITY:
+			body.velocity.y = -p.TERMINAL_VELOCITY
 
 	body.move_and_slide()
 
 
-static func _accelerate(body: CharacterBody3D, wish_dir: Vector3, wish_speed: float, accel: float, delta: float) -> void:
-	if wish_dir.length_squared() < 0.0001:
+static func _accelerate(
+		body: CharacterBody3D,
+		wish_dir: Vector3,
+		wish_speed: float,
+		accel: float,
+		delta: float
+) -> void:
+	if wish_dir.length_squared() < 0.0001 or wish_speed <= 0.0:
 		return
+	# Instant ground accel toward cap; extra bhop speed along wishdir is kept.
 	var current := body.velocity.dot(wish_dir)
 	var add := wish_speed - current
 	if add <= 0.0:
@@ -53,34 +78,36 @@ static func _accelerate(body: CharacterBody3D, wish_dir: Vector3, wish_speed: fl
 	body.velocity += wish_dir * acc
 
 
-static func _air_accelerate(body: CharacterBody3D, wish_dir: Vector3, wish_speed: float, delta: float) -> void:
-	var capped := minf(wish_speed, AIR_SPEED_CAP)
-	_accelerate(body, wish_dir, capped, AIR_ACCEL, delta)
-
-
-static func _air_control(body: CharacterBody3D, wish_dir: Vector3, delta: float) -> void:
+static func _air_accelerate(
+		body: CharacterBody3D,
+		wish_dir: Vector3,
+		wish_speed: float,
+		delta: float,
+		p: QuakeMoveParams
+) -> void:
 	if wish_dir.length_squared() < 0.0001:
 		return
+	var wishspd := minf(wish_speed, p.AIR_WISH_SPEED_CAP)
+	var current := body.velocity.dot(wish_dir)
+	var add := wishspd - current
+	if add <= 0.0:
+		return
+	# Accel uses full wish_speed (Q3: accel * wishspeed * frametime).
+	var acc := p.AIR_ACCEL * wish_speed * delta
+	if acc > add:
+		acc = add
+	body.velocity += wish_dir * acc
+
+
+static func _friction(body: CharacterBody3D, delta: float, p: QuakeMoveParams) -> void:
 	var horiz := Vector3(body.velocity.x, 0.0, body.velocity.z)
 	var speed := horiz.length()
-	if speed < 0.01:
-		return
-	var dot := horiz.normalized().dot(wish_dir)
-	if dot > 0.0:
-		var k := AIR_CONTROL * dot * dot * delta
-		horiz = horiz.lerp(wish_dir * speed, clampf(k, 0.0, 1.0))
-		body.velocity.x = horiz.x
-		body.velocity.z = horiz.z
-
-
-static func _friction(body: CharacterBody3D, delta: float) -> void:
-	var speed := Vector3(body.velocity.x, 0.0, body.velocity.z).length()
 	if speed < 0.05:
 		body.velocity.x = 0.0
 		body.velocity.z = 0.0
 		return
-	var control := speed if speed >= STOP_SPEED else STOP_SPEED
-	var drop := control * FRICTION * delta
+	var control := speed if speed >= p.STOP_SPEED else p.STOP_SPEED
+	var drop := control * p.FRICTION * delta
 	var new_speed := maxf(speed - drop, 0.0)
 	var scale := new_speed / speed
 	body.velocity.x *= scale

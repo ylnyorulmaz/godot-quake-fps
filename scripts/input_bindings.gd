@@ -1,5 +1,8 @@
 extends Node
 
+## Runtime InputMap so the project runs without editing Project Settings.
+## Actions: move_*, jump, sprint, crouch, fire, next/prev_weapon, weapon_1-4.
+
 
 func _ready() -> void:
 	_key("move_forward", KEY_W)
@@ -11,8 +14,10 @@ func _ready() -> void:
 	_key("move_right", KEY_D)
 	_key("move_right", KEY_RIGHT)
 	_key("jump", KEY_SPACE)
+	_key("sprint", KEY_SHIFT)
 	_key("crouch", KEY_CTRL)
 	_key("crouch", KEY_C)
+	_mouse("fire", MOUSE_BUTTON_LEFT)
 	_mouse("attack", MOUSE_BUTTON_LEFT)
 	_key("weapon_1", KEY_1)
 	_key("weapon_2", KEY_2)
@@ -28,6 +33,8 @@ func _key(action: String, keycode: Key) -> void:
 	_ensure(action)
 	var event := InputEventKey.new()
 	event.physical_keycode = keycode
+	# Match all devices. In Godot 4.7, device 0 can be a joypad.
+	event.device = -1
 	if not InputMap.action_has_event(action, event):
 		InputMap.action_add_event(action, event)
 
@@ -36,6 +43,7 @@ func _mouse(action: String, button: MouseButton) -> void:
 	_ensure(action)
 	var event := InputEventMouseButton.new()
 	event.button_index = button
+	event.device = -1
 	if not InputMap.action_has_event(action, event):
 		InputMap.action_add_event(action, event)
 

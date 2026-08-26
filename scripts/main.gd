@@ -5,7 +5,7 @@ var _player: Player
 var _menu: Control
 var _end: Control
 var _hud: HUD
-var _bots: Array[ArenaBot] = []
+var _bots: Array[EnemyBot] = []
 const BOT_COUNT := 3
 const BOT_NAMES := ["Grunt", "Ranger", "Visl"]
 const BOT_COLORS := [Color(0.75, 0.18, 0.15), Color(0.2, 0.45, 0.8), Color(0.55, 0.2, 0.7)]
@@ -17,8 +17,15 @@ func _ready() -> void:
 	_world.name = "World"
 	_world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_world)
-	var builder := ArenaBuilder.new()
-	builder.build(_world)
+	var arena: Node3D = null
+	var packed := load("res://scenes/arena_generator.tscn") as PackedScene
+	if packed != null:
+		arena = packed.instantiate() as Node3D
+	else:
+		var gen_script: Script = load("res://scripts/arena_generator.gd")
+		arena = gen_script.new() as Node3D
+	arena.name = "ArenaGenerator"
+	_world.add_child(arena)
 	_build_menu()
 	_build_end()
 	GameState.match_ended.connect(_on_match_ended)
@@ -64,7 +71,7 @@ func _build_menu() -> void:
 	col.add_child(title)
 
 	var sub := Label.new()
-	sub.text = "Godot 4 arena shooter  ·  air-strafe  ·  rocket jump"
+	sub.text = "Godot 4.7 arena shooter  ·  air-strafe  ·  rocket jump"
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 18)
 	sub.add_theme_color_override("font_color", Color(0.8, 0.7, 0.55))
@@ -109,7 +116,11 @@ func _start_match() -> void:
 	_menu.visible = false
 	GameState.reset_match()
 	_clear_actors()
-	_player = Player.new()
+	var packed := load("res://scenes/player.tscn") as PackedScene
+	if packed != null:
+		_player = packed.instantiate() as Player
+	else:
+		_player = Player.new()
 	_player.name = "Player"
 	_player.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_player)
@@ -117,16 +128,23 @@ func _start_match() -> void:
 	_player.died.connect(_on_player_died)
 
 	_hud = HUD.new()
-	_hud.player = _player
 	_hud.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_hud)
+	_hud.setup(_player)
 
 	_bots.clear()
 	for i in BOT_COUNT:
-		var bot := ArenaBot.new()
+		var bot: EnemyBot
+		var bot_packed := load("res://scenes/enemy_bot.tscn") as PackedScene
+		if bot_packed != null:
+			bot = bot_packed.instantiate() as EnemyBot
+		else:
+			var bot_script: Script = load("res://scripts/enemy_bot.gd")
+			bot = bot_script.new() as EnemyBot
 		bot.bot_name = BOT_NAMES[i]
 		bot.color = BOT_COLORS[i]
 		bot.name = BOT_NAMES[i]
+		bot.player_path = NodePath("../Player")
 		bot.process_mode = Node.PROCESS_MODE_PAUSABLE
 		add_child(bot)
 		bot.respawn_at(_spawn_pos())
@@ -170,26 +188,26 @@ func _spawn_pos() -> Vector3:
 
 
 func _on_player_died(killer: Node) -> void:
-	var killer_name := "world"
-	if killer is ArenaBot:
-		killer_name = (killer as ArenaBot).bot_name
-	GameState.add_frag(killer_name, "YOU", false, true)
+	GameState.add_frag(_actor_name(killer), "YOU", false, true)
 	await get_tree().create_timer(1.6).timeout
 	if is_instance_valid(_player) and GameState.match_running:
 		_player.respawn_at(_spawn_pos())
 
 
-func _on_bot_died(killer: Node, bot: ArenaBot) -> void:
-	var killer_name := "world"
+func _on_bot_died(killer: Node, bot: EnemyBot) -> void:
 	var is_player := killer == _player
-	if is_player:
-		killer_name = "YOU"
-	elif killer is ArenaBot:
-		killer_name = (killer as ArenaBot).bot_name
-	GameState.add_frag(killer_name, bot.bot_name, is_player, false)
+	GameState.add_frag(_actor_name(killer), bot.bot_name, is_player, false)
 	await get_tree().create_timer(1.8).timeout
 	if is_instance_valid(bot) and GameState.match_running:
 		bot.respawn_at(_spawn_pos())
+
+
+func _actor_name(node: Node) -> String:
+	if node == _player:
+		return "YOU"
+	if node != null and is_instance_valid(node) and "bot_name" in node:
+		return str(node.bot_name)
+	return "world"
 
 
 func _toggle_pause() -> void:

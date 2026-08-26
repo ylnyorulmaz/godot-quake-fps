@@ -24,7 +24,12 @@ func configure(from: Vector3, to: Vector3, color: Color, thickness := 0.04) -> v
 		mat.albedo_color = color
 		mat.emission = color
 	global_position = (from + to) * 0.5
-	look_at(to, Vector3.UP)
+	if length > 0.05:
+		var up := Vector3.UP
+		var dir := (to - from).normalized()
+		if absf(dir.dot(up)) > 0.99:
+			up = Vector3.RIGHT
+		look_at(to, up)
 
 
 func _process(delta: float) -> void:

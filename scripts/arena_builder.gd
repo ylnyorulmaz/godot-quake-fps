@@ -1,5 +1,6 @@
 class_name ArenaBuilder
 extends Node
+## Legacy enclosed deathmatch hull. The live map is `ArenaGenerator`.
 
 var world: Node3D
 
@@ -54,6 +55,9 @@ func _hull() -> void:
 	comb.use_collision = true
 	comb.collision_layer = 1
 	comb.collision_mask = 0
+	# Godot 4.7 CSG autosmooth (ignored on older editors).
+	if "autosmooth" in comb:
+		comb.autosmooth = true
 	world.add_child(comb)
 	var floor_box := CSGBox3D.new()
 	floor_box.size = Vector3(80, 1, 80)

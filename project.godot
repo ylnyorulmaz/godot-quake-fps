@@ -1,5 +1,5 @@
 ; Engine configuration file.
-; Godot 4 Quake-inspired arena FPS
+; Godot 4.7 Quake-inspired arena FPS
 config_version=5
 
 [application]
@@ -7,7 +7,7 @@ config_version=5
 config/name="Godot Quake FPS"
 config/description="Quake-inspired arena FPS with CPM-style movement, splash knockback, and bot deathmatch."
 run/main_scene="res://scenes/main.tscn"
-config/features=PackedStringArray("4.3", "Forward Plus")
+config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -42,11 +42,13 @@ ui_cancel={
 
 [physics]
 
+3d/physics_engine="Jolt Physics"
 3d/default_gravity=20.0
 common/physics_ticks_per_second=60
 
 [rendering]
 
+renderer/rendering_method="forward_plus"
 anti_aliasing/quality/msaa_3d=2
 lights_and_shadows/directional_shadow/size=4096
 environment/defaults/default_clear_color=Color(0.02, 0.02, 0.03, 1)
