@@ -175,8 +175,6 @@ func select(kind: Kind) -> void:
 	_switch_timer.start(SWITCH_TIME)
 	_apply_range(_data(current))
 	_update_viewmodel()
-	if kind != Kind.MG:
-		_stop_mg_loop()
 	weapon_changed.emit(_data(current))
 
 
@@ -595,9 +593,6 @@ func _play_fire_sound(data: WeaponData, at: Vector3) -> void:
 	var fx := get_node_or_null("/root/AudioFx")
 	if fx == null or not fx.has_method("play"):
 		return
-	if is_player and data.sound_key == "mg":
-		_start_mg_loop()
-		return
 	if is_player:
 		fx.play(data.sound_key)
 	elif fx.has_method("play_at"):
@@ -621,8 +616,6 @@ func _kick() -> void:
 func _pulse_mg() -> void:
 	_mg_spin_vel = maxf(_mg_spin_vel, 26.0)
 	_mg_flash = 1.0
-	if is_player:
-		_start_mg_loop()
 
 
 func _mg_view() -> Node3D:
@@ -644,23 +637,6 @@ func _tick_mg(delta: float) -> void:
 	ViewGen.spin_barrels(gun, _mg_spin_vel * delta)
 	_mg_flash = maxf(_mg_flash - delta * 18.0, 0.0)
 	ViewGen.set_muzzle_flash(gun, _mg_flash)
-	if is_player:
-		if current == Kind.MG and _mg_spin_vel > 3.0:
-			_start_mg_loop()
-		else:
-			_stop_mg_loop()
-
-
-func _start_mg_loop() -> void:
-	var fx := get_node_or_null("/root/AudioFx")
-	if fx != null and fx.has_method("start_loop"):
-		fx.start_loop("mg")
-
-
-func _stop_mg_loop() -> void:
-	var fx := get_node_or_null("/root/AudioFx")
-	if fx != null and fx.has_method("stop_loop"):
-		fx.stop_loop()
 
 
 func _dry_click() -> void:

@@ -4,6 +4,7 @@ extends CanvasLayer
 ## Full-screen HUD. Root Control uses full-rect anchors so it survives resize.
 
 const CrosshairScript := preload("res://scripts/crosshair.gd")
+const CombatLogScript := preload("res://scripts/combat_log.gd")
 
 var player: Player
 var _root: Control
@@ -18,6 +19,7 @@ var _cross: Control
 var _strafe: StrafeHelper
 var _hurt: ColorRect
 var _scoreboard: Label
+var _log: Control
 var _hint: Label
 var _power: Label
 var _power_tint: ColorRect
@@ -144,6 +146,19 @@ func _ready() -> void:
 	_scoreboard.offset_bottom = 140.0
 	_root.add_child(_scoreboard)
 
+	_log = CombatLogScript.new()
+	_log.name = "CombatLog"
+	_log.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_log.offset_left = 16.0
+	_log.offset_top = 50.0
+	_log.offset_right = 640.0
+	_log.offset_bottom = 260.0
+	_log.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_log)
+	var gs := get_node_or_null("/root/GameState")
+	if gs != null and gs.has_signal("event_logged") and not gs.event_logged.is_connected(_on_event_logged):
+		gs.event_logged.connect(_on_event_logged)
+
 	GameState.scores_changed.connect(_refresh_score)
 
 
@@ -256,6 +271,11 @@ func _process(delta: float) -> void:
 		_scoreboard.text = _board_text()
 	if _cross:
 		_cross.visible = player.is_alive() and not _scoreboard.visible
+
+
+func _on_event_logged(text: String) -> void:
+	if _log != null and _log.has_method("push"):
+		_log.push(text)
 
 
 func _refresh_score() -> void:

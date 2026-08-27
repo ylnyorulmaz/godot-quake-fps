@@ -13,6 +13,7 @@ func _init() -> void:
 	failed += _test_scoreboard_kd()
 	failed += _test_time_limit_picks_standings_leader()
 	failed += _test_time_off_does_not_end()
+	failed += _test_frag_log_line()
 	if failed > 0:
 		push_error("game_state tests failed: %d" % failed)
 		quit(1)
@@ -159,5 +160,18 @@ func _test_time_off_does_not_end() -> int:
 		push_error("clock_text should be empty when time is off")
 		return 1
 	print("ok   time off does not end the match")
+	gs.queue_free()
+	return 0
+
+
+func _test_frag_log_line() -> int:
+	var gs = _fresh()
+	gs.register_bot("Grunt")
+	gs.start_match()
+	gs.add_frag("YOU", "Grunt", true, false, "machine gunned")
+	if gs.last_event != "YOU machine gunned Grunt":
+		push_error("frag log, got %s" % gs.last_event)
+		return 1
+	print("ok   frags write a combat log line")
 	gs.queue_free()
 	return 0
