@@ -97,6 +97,7 @@ Mega-Health: +100 HP, clamped to 200, 30s respawn.
 
 - **Hitscan** (MG / shotgun / rail): `RayCast3D` from the camera, plus spread pellets. Calls `take_damage` on the hit body and spawns a short 3D trail.
 - **Projectile** (rocket): `scenes/rocket.tscn` from **Muzzle**, aimed at the camera ray point. Sphere query splash + `apply_explosion_knockback` (self-damage scaled).
+- **Viewmodels** are code-built primitives with 128×128 nearest skins ([`scripts/weapon_skin.gd`](scripts/weapon_skin.gd) / [`scripts/weapon_viewmodel.gd`](scripts/weapon_viewmodel.gd)). No GLB or PNG assets.
 
 Switch with **1–4** or the mouse wheel (`next_weapon` / `prev_weapon`). Fire with **LMB** (`fire`).
 
