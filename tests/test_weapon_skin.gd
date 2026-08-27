@@ -88,19 +88,38 @@ func _count_meshes(n: Node) -> int:
 	return total
 
 
+func _count_textured(n: Node) -> int:
+	var total := 0
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.material_override is StandardMaterial3D:
+			var mat := mi.material_override as StandardMaterial3D
+			if mat.albedo_texture != null:
+				total += 1
+	for child in n.get_children():
+		total += _count_textured(child)
+	return total
+
+
+func _has_emission(n: Node) -> bool:
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if mi.material_override is StandardMaterial3D:
+			var mat := mi.material_override as StandardMaterial3D
+			if mat.emission_enabled:
+				return true
+	for child in n.get_children():
+		if _has_emission(child):
+			return true
+	return false
+
+
 func _test_viewmodels_are_compound() -> int:
 	for id in ["machinegun", "shotgun", "rocket", "railgun"]:
 		var gun: Node3D = WView.build(id)
 		root.add_child(gun)
 		var meshes := _count_meshes(gun)
-		var textured := 0
-		for child in gun.get_children():
-			if child is MeshInstance3D:
-				var mi := child as MeshInstance3D
-				if mi.material_override is StandardMaterial3D:
-					var mat := mi.material_override as StandardMaterial3D
-					if mat.albedo_texture != null:
-						textured += 1
+		var textured := _count_textured(gun)
 		if meshes < 10:
 			push_error("%s viewmodel too simple (%d parts)" % [id, meshes])
 			return 1
@@ -117,21 +136,20 @@ func _test_guns_are_distinct() -> int:
 	for id in ["machinegun", "shotgun", "rocket", "railgun"]:
 		var gun: Node3D = WView.build(id)
 		counts[id] = _count_meshes(gun)
-		var has_glow := false
-		for child in gun.get_children():
-			if child is MeshInstance3D:
-				var mi := child as MeshInstance3D
-				if mi.material_override is StandardMaterial3D:
-					var mat := mi.material_override as StandardMaterial3D
-					if mat.emission_enabled:
-						has_glow = true
+		var has_glow := _has_emission(gun)
 		if id == "railgun" and not has_glow:
 			push_error("railgun should have an emitting coil")
 			return 1
 		if id == "rocket" and not has_glow:
 			push_error("rocket should have a hot nozzle")
 			return 1
+		if id == "machinegun" and not has_glow:
+			push_error("machinegun should have a hot muzzle")
+			return 1
 		gun.queue_free()
+	if int(counts["machinegun"]) <= int(counts["shotgun"]):
+		push_error("chaingun should be chunkier than shotgun")
+		return 1
 	if int(counts["machinegun"]) == int(counts["shotgun"]) and int(counts["shotgun"]) == int(counts["railgun"]):
 		push_error("guns should not all share the same part count")
 		return 1

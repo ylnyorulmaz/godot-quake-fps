@@ -37,7 +37,8 @@ func _build(kind: String) -> void:
 		_add_cyl(0.028, 0.12, Color(0.85, 0.2, 0.08), Vector3.ZERO)
 		_add_cyl(0.03, 0.03, Color(0.9, 0.7, 0.2), Vector3(0.0, 0.055, 0.0))
 	else:
-		_add_cyl(0.012, 0.055, Color(0.85, 0.65, 0.2), Vector3.ZERO)
+		_add_cyl(0.011, 0.048, Color(0.9, 0.68, 0.18), Vector3.ZERO)
+		_add_cyl(0.015, 0.012, Color(1.0, 0.82, 0.32), Vector3(0.0, 0.026, 0.0))
 
 
 func _add_cyl(radius: float, height: float, color: Color, pos: Vector3) -> void:

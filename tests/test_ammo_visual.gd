@@ -97,10 +97,10 @@ func _test_casings_differ() -> int:
 	var hull = CasingScript.new()
 	root.add_child(hull)
 	hull.configure("shotgun", Vector3.ZERO, Vector3.RIGHT, Vector3.FORWARD)
-	if int(brass.mesh_count()) < 1:
-		push_error("MG casing missing mesh")
+	if int(brass.mesh_count()) < 2:
+		push_error("MG casing should have a body and a rim")
 		return 1
-	if int(hull.mesh_count()) <= int(brass.mesh_count()):
+	if int(hull.mesh_count()) < 2:
 		push_error("shotgun hull should have a brass cap on top of the red body")
 		return 1
 	if brass.first_albedo().is_equal_approx(hull.first_albedo()):

@@ -39,6 +39,8 @@ var _switch_timer: Timer
 var _aim_override := Transform3D.IDENTITY
 var _use_aim_override := false
 var _view_kick := Vector3.ZERO
+var _mg_spin_vel := 0.0
+var _mg_flash := 0.0
 
 const _KIND_ORDER: Array[Kind] = [Kind.MG, Kind.SHOTGUN, Kind.ROCKET, Kind.RAIL]
 const HIT_MASK := 1 | 2 | 4 | 32
@@ -138,7 +140,9 @@ func _process(delta: float) -> void:
 	var rest := Vector3(0.28, -0.22, -0.45)
 	viewmodel.position = viewmodel.position.lerp(rest + _view_kick, 1.0 - exp(-10.0 * delta))
 	viewmodel.rotation.x = lerp_angle(viewmodel.rotation.x, 0.0, 1.0 - exp(-10.0 * delta))
+	viewmodel.rotation.z = lerp_angle(viewmodel.rotation.z, 0.0, 1.0 - exp(-12.0 * delta))
 	_view_kick = _view_kick.lerp(Vector3.ZERO, 1.0 - exp(-8.0 * delta))
+	_tick_mg(delta)
 
 
 func has_weapon(kind: Kind) -> bool:
@@ -247,6 +251,9 @@ func _alt_mg() -> bool:
 	ammo[Kind.MG] = int(ammo.get(Kind.MG, 0)) - ALT_MG_AMMO
 	_fire_hitscan(data, _aim(), ALT_MG_PELLETS, ALT_MG_SPREAD_DEG)
 	_play_fire_sound(data, _aim().origin)
+	_eject_casing("mg")
+	_eject_casing("mg")
+	_pulse_mg()
 	_kick()
 	_fire_timer.start(maxf(data.fire_rate, 0.02))
 	_apply_range(data)
@@ -358,6 +365,7 @@ func _fire(data: WeaponData) -> void:
 	_play_fire_sound(data, aim.origin)
 	if current == Kind.MG:
 		_eject_casing("mg")
+		_pulse_mg()
 	elif current == Kind.SHOTGUN:
 		_eject_casing("shotgun")
 	_kick()
@@ -421,7 +429,10 @@ func _fire_hitscan(data: WeaponData, aim: Transform3D, pellet_override: int = -1
 			if collider != owner_body:
 				landed = true
 		if is_player or is_center:
-			_spawn_trail(from, hit_pos, data)
+			var trail_from := from
+			if is_player and current == Kind.MG and _muzzle != null and _muzzle.is_inside_tree():
+				trail_from = _muzzle.global_position
+			_spawn_trail(trail_from, hit_pos, data)
 	if landed:
 		notify_hit()
 
@@ -539,7 +550,8 @@ func _spawn_trail(from: Vector3, to: Vector3, data: WeaponData) -> void:
 		return
 	var fx := HitscanFx.new()
 	host.add_child(fx)
-	fx.configure(from, to, data.trail_color, data.trail_thickness)
+	var tracer := current == Kind.MG
+	fx.configure(from, to, data.trail_color, data.trail_thickness, tracer)
 
 
 func _eject_casing(kind: String) -> void:
@@ -587,8 +599,41 @@ func _play_fire_sound(data: WeaponData, at: Vector3) -> void:
 func _kick() -> void:
 	if viewmodel == null:
 		return
+	if current == Kind.MG:
+		_view_kick.z += 0.016
+		_view_kick.x += randf_range(-0.012, 0.012)
+		_view_kick.y += randf_range(0.0, 0.008)
+		viewmodel.rotation.x -= 0.016
+		viewmodel.rotation.z += randf_range(-0.014, 0.014)
+		return
 	_view_kick.z += 0.05
 	viewmodel.rotation.x -= 0.05
+
+
+func _pulse_mg() -> void:
+	_mg_spin_vel = maxf(_mg_spin_vel, 26.0)
+	_mg_flash = 1.0
+
+
+func _mg_view() -> Node3D:
+	if viewmodel == null:
+		return null
+	return viewmodel.get_node_or_null("MACHINEGUN") as Node3D
+
+
+func _tick_mg(delta: float) -> void:
+	var gun := _mg_view()
+	if gun == null:
+		_mg_flash = 0.0
+		return
+	var firing := current == Kind.MG and state == State.FIRING
+	if firing:
+		_mg_spin_vel = maxf(_mg_spin_vel, 18.0)
+	else:
+		_mg_spin_vel = maxf(_mg_spin_vel - delta * 16.0, 0.0)
+	ViewGen.spin_barrels(gun, _mg_spin_vel * delta)
+	_mg_flash = maxf(_mg_flash - delta * 18.0, 0.0)
+	ViewGen.set_muzzle_flash(gun, _mg_flash)
 
 
 func _apply_range(data: WeaponData) -> void:
@@ -606,6 +651,11 @@ func _update_viewmodel() -> void:
 		var slot := get_node_or_null(slot_name) as Node3D
 		if slot:
 			slot.visible = _slot_matches(slot_name)
+	if _muzzle:
+		if current == Kind.MG:
+			_muzzle.position = Vector3(0.28, -0.22, -0.45) + ViewGen.MG_MUZZLE_LOCAL
+		else:
+			_muzzle.position = Vector3(0.28, -0.18, -0.55)
 
 
 func _slot_matches(slot_name: String) -> bool:

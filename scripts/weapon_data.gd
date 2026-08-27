@@ -38,8 +38,8 @@ static func machinegun() -> WeaponData:
 	d.pellet_count = 1
 	d.spread_deg = 1.0
 	d.knockback = 3.5
-	d.trail_color = Color(1.0, 0.85, 0.3)
-	d.trail_thickness = 0.025
+	d.trail_color = Color(1.0, 0.72, 0.18)
+	d.trail_thickness = 0.018
 	d.viewmodel_size = Vector3(0.08, 0.08, 0.55)
 	d.viewmodel_color = Color(0.25, 0.25, 0.28)
 	d.sound_key = "mg"
