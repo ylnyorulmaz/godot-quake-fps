@@ -17,6 +17,7 @@ const BOT_MODELS := [
 ## Grunt charges, Ranger camps, Visl panics.
 const BOT_PERSONALITIES := [0, 2, 4]
 const PERSONALITY_NAMES := ["Agresif", "Savunmacı", "Sniper", "Normal", "Crazy"]
+const Atmosphere := preload("res://scripts/cinematic_atmosphere.gd")
 
 var _bot_personalities: Array[int] = [0, 2, 4]
 var _personality_btns: Array[Button] = []
@@ -31,13 +32,20 @@ var _map_btns: Array[Button] = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	var world_env := WorldEnvironment.new()
+	world_env.name = "WorldEnvironment"
+	world_env.environment = Atmosphere.make_environment()
+	add_child(world_env)
+	Atmosphere.style_lights(self)
 	_world = Node3D.new()
 	_world.name = "World"
 	_world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_world)
 	_build_menu()
 	_build_end()
-	GameState.match_ended.connect(_on_match_ended)
+	var gs := get_node_or_null("/root/GameState")
+	if gs != null and gs.has_signal("match_ended"):
+		gs.match_ended.connect(_on_match_ended)
 	call_deferred("_spawn_arena")
 
 
@@ -62,6 +70,10 @@ func _spawn_arena() -> void:
 	if "layout" in arena:
 		arena.set("layout", want)
 	_world.add_child(arena)
+	Atmosphere.style_lights(self)
+	var keep := get_node_or_null("WorldEnvironment") as WorldEnvironment
+	if keep:
+		Atmosphere.keep_single_environment(self, keep)
 
 
 func _unhandled_input(event: InputEvent) -> void:

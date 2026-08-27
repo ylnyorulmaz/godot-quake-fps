@@ -76,21 +76,21 @@ func _ready() -> void:
 	_speedo.offset_bottom = -52.0
 	_speedo.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
-	_health = _label(64, Color(1.0, 0.18, 0.1), HORIZONTAL_ALIGNMENT_LEFT)
+	_health = _label(64, Color(0.95, 0.18, 0.1), HORIZONTAL_ALIGNMENT_LEFT)
 	_health.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_health.offset_left = 36.0
 	_health.offset_right = 280.0
 	_health.offset_top = -128.0
 	_health.offset_bottom = -56.0
 
-	_armor = _label(36, Color(0.95, 0.82, 0.18), HORIZONTAL_ALIGNMENT_LEFT)
+	_armor = _label(36, Color(0.95, 0.72, 0.18), HORIZONTAL_ALIGNMENT_LEFT)
 	_armor.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_armor.offset_left = 40.0
 	_armor.offset_right = 280.0
 	_armor.offset_top = -58.0
 	_armor.offset_bottom = -22.0
 
-	_ammo = _label(64, Color(1.0, 0.82, 0.22), HORIZONTAL_ALIGNMENT_RIGHT)
+	_ammo = _label(64, Color(1.0, 0.48, 0.12), HORIZONTAL_ALIGNMENT_RIGHT)
 	_ammo.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_ammo.offset_left = -280.0
 	_ammo.offset_right = -40.0
@@ -170,8 +170,7 @@ func _label(size: int, color: Color, align: HorizontalAlignment) -> Label:
 
 
 func _draw_cross() -> void:
-	# Q3-style plus with a gap in the middle.
-	var c := Color(0.25, 1.0, 0.32, 0.92)
+	var c := Color(1.0, 0.42, 0.1, 0.92)
 	_cross.draw_rect(Rect2(11, 0, 2, 7), c)
 	_cross.draw_rect(Rect2(11, 17, 2, 7), c)
 	_cross.draw_rect(Rect2(0, 11, 7, 2), c)
