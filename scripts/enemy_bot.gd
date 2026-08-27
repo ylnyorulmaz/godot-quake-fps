@@ -96,7 +96,9 @@ func _ready() -> void:
 	_configure_timer()
 	if health_comp and not health_comp.died.is_connected(_on_vitals_died):
 		health_comp.died.connect(_on_vitals_died)
-	GameState.register_bot(bot_name)
+	var gs := get_node_or_null("/root/GameState")
+	if gs != null and gs.has_method("register_bot"):
+		gs.register_bot(bot_name)
 	_strafe_sign = -1.0 if randf() < 0.5 else 1.0
 
 
@@ -248,7 +250,7 @@ func _configure_timer() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if not _alive or GameState.paused or not GameState.match_running:
+	if not _alive or not _match_active():
 		return
 	_strafe_swap -= delta
 	if _strafe_swap <= 0.0:
@@ -488,7 +490,7 @@ func _look_toward(desired: Vector3, target: Node3D, delta: float) -> void:
 
 
 func _on_shoot_timer() -> void:
-	if not _alive or GameState.paused or not GameState.match_running:
+	if not _alive or not _match_active():
 		return
 	if absf(_shoot_timer.wait_time - attack_cooldown) > 0.001:
 		_shoot_timer.wait_time = maxf(attack_cooldown, 0.05)
@@ -526,7 +528,7 @@ func _fire_hitscan(target: Node3D) -> void:
 				kb = -hit.normal
 			collider.take_damage(attack_damage, kb, attack_knockback, self)
 	_spawn_tracer(from, impact)
-	AudioFx.play_at("mg", global_position)
+	_play_fx("mg", global_position)
 
 
 func _chest_of(node: Node3D) -> Vector3:
@@ -590,11 +592,11 @@ func apply_pickup(kind: int) -> bool:
 	if health_comp == null:
 		return false
 	match kind:
-		Pickup.Kind.HEALTH:
+		0: # Pickup.Kind.HEALTH
 			return health_comp.add_health(25.0, health_comp.max_health)
-		Pickup.Kind.MEGA_HEALTH:
+		1: # Pickup.Kind.MEGA_HEALTH
 			return health_comp.apply_mega_health(100.0)
-		Pickup.Kind.ARMOR:
+		2: # Pickup.Kind.ARMOR
 			return health_comp.add_armor(50.0, health_comp.max_armor)
 		_:
 			return false
@@ -616,7 +618,7 @@ func _die(attacker: Node) -> void:
 	_has_los = false
 	if _shoot_timer:
 		_shoot_timer.stop()
-	AudioFx.play_at("death", global_position)
+	_play_fx("death", global_position)
 	died.emit(attacker)
 	visible = false
 	collision_layer = 0
@@ -694,3 +696,16 @@ func _collect_meshes(root: Node, out: Array[MeshInstance3D]) -> void:
 			stack.append(child)
 		if node is MeshInstance3D:
 			out.append(node)
+
+
+func _match_active() -> bool:
+	var gs := get_node_or_null("/root/GameState")
+	if gs == null:
+		return true
+	return not bool(gs.get("paused")) and bool(gs.get("match_running"))
+
+
+func _play_fx(kind: String, at: Vector3) -> void:
+	var fx := get_node_or_null("/root/AudioFx")
+	if fx != null and fx.has_method("play_at"):
+		fx.play_at(kind, at)

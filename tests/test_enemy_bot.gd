@@ -6,6 +6,10 @@ const Bot := preload("res://scripts/enemy_bot.gd")
 
 
 func _init() -> void:
+	call_deferred("_run")
+
+
+func _run() -> void:
 	var failed := 0
 	failed += _test_spread_misses()
 	failed += _test_collects_other_bots()
@@ -33,10 +37,12 @@ func _test_spread_misses() -> int:
 	return 0
 
 
-func _make_bot(name: String, pos: Vector3):
+func _make_bot(bot_name: String, pos: Vector3):
 	var bot = Bot.new()
-	bot.name = name
-	bot.bot_name = name
+	if bot == null:
+		return null
+	bot.name = bot_name
+	bot.bot_name = bot_name
 	bot.model_path = "res://does_not_exist.glb"
 	bot.model_scene = null
 	root.add_child(bot)
@@ -47,6 +53,9 @@ func _make_bot(name: String, pos: Vector3):
 func _test_collects_other_bots() -> int:
 	var a = _make_bot("Grunt", Vector3(0, 0, 0))
 	var b = _make_bot("Ranger", Vector3(4, 0, 0))
+	if a == null or b == null:
+		push_error("EnemyBot failed to instantiate")
+		return 1
 	var player := CharacterBody3D.new()
 	player.name = "Player"
 	player.add_to_group("player")
