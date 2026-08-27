@@ -130,24 +130,26 @@ func _ensure_containers() -> void:
 
 
 func _environment() -> void:
-	if get_node_or_null("WorldEnvironment") != null:
-		return
-	var we := WorldEnvironment.new()
-	we.name = "WorldEnvironment"
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.42, 0.48, 0.55)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.62, 0.58, 0.52)
-	env.ambient_light_energy = 1.15
-	env.fog_enabled = false
-	env.glow_enabled = false
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	if "tonemap_exposure" in env:
-		env.tonemap_exposure = 1.2
-	we.environment = env
-	add_child(we)
+	# Main.gd owns the cinematic WorldEnvironment; don't overwrite it.
+	if _find_world_environment() == null:
+		var we := WorldEnvironment.new()
+		we.name = "WorldEnvironment"
+		var env := Environment.new()
+		env.background_mode = Environment.BG_COLOR
+		env.background_color = Color(0.42, 0.48, 0.55)
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color(0.62, 0.58, 0.52)
+		env.ambient_light_energy = 1.15
+		env.fog_enabled = false
+		env.glow_enabled = false
+		env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		if "tonemap_exposure" in env:
+			env.tonemap_exposure = 1.2
+		we.environment = env
+		add_child(we)
 
+	if get_node_or_null("Sun") != null:
+		return
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(-55, 35, 0)
@@ -156,6 +158,16 @@ func _environment() -> void:
 	# A closed ceiling + directional shadows blacked out the whole floor.
 	sun.shadow_enabled = false
 	add_child(sun)
+
+
+func _find_world_environment() -> WorldEnvironment:
+	var n: Node = self
+	while n != null:
+		var we := n.get_node_or_null("WorldEnvironment") as WorldEnvironment
+		if we != null:
+			return we
+		n = n.get_parent()
+	return null
 
 
 func _floor_and_hull() -> void:

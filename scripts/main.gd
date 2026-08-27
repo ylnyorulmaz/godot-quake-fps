@@ -27,13 +27,16 @@ var _diff_hard: Button
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_apply_cinematic_atmosphere()
 	_world = Node3D.new()
 	_world.name = "World"
 	_world.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(_world)
 	_build_menu()
 	_build_end()
-	GameState.match_ended.connect(_on_match_ended)
+	var gs := get_node_or_null("/root/GameState")
+	if gs != null and gs.has_signal("match_ended"):
+		gs.match_ended.connect(_on_match_ended)
 	call_deferred("_spawn_arena")
 
 
@@ -49,6 +52,8 @@ func _spawn_arena() -> void:
 		arena = gen_script.new() as Node3D
 	arena.name = "ArenaGenerator"
 	_world.add_child(arena)
+	_style_directional_lights(self)
+	_keep_single_world_environment()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -420,6 +425,80 @@ func _on_match_ended() -> void:
 	var board := _end.find_child("Board", true, false) as Label
 	if board:
 		board.text = GameState.scoreboard_text()
+
+
+func _apply_cinematic_atmosphere() -> void:
+	var existing := get_node_or_null("WorldEnvironment") as WorldEnvironment
+	if existing == null:
+		existing = WorldEnvironment.new()
+		existing.name = "WorldEnvironment"
+		add_child(existing)
+	existing.environment = make_cinematic_environment()
+	_style_directional_lights(self)
+
+
+static func make_cinematic_environment() -> Environment:
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.05, 0.05, 0.05)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.1, 0.12, 0.15)
+	env.ambient_light_energy = 0.28
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	if "tonemap_exposure" in env:
+		env.tonemap_exposure = 0.95
+	env.glow_enabled = true
+	env.glow_intensity = 0.3
+	if "glow_bloom" in env:
+		env.glow_bloom = 0.12
+	if "glow_map" in env:
+		var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+		img.fill(Color(0.62, 0.78, 1.0))
+		var tex := ImageTexture.create_from_image(img)
+		env.glow_map = tex
+		if "glow_map_strength" in env:
+			env.glow_map_strength = 0.35
+	if "ssao_enabled" in env:
+		env.ssao_enabled = true
+		env.ssao_intensity = 1.5
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.08, 0.12, 0.14)
+	env.fog_density = 0.015
+	return env
+
+
+static func style_directional_light(light: DirectionalLight3D) -> void:
+	# Low sun: long cold shadows across the yard.
+	light.light_color = Color(0.55, 0.72, 0.95)
+	light.light_energy = 1.15
+	light.rotation_degrees = Vector3(-18.0, 42.0, 0.0)
+	light.shadow_enabled = true
+	if "shadow_blur" in light:
+		light.shadow_blur = 1.4
+	if "shadow_opacity" in light:
+		light.shadow_opacity = 0.72
+
+
+func _style_directional_lights(node: Node) -> void:
+	if node is DirectionalLight3D:
+		style_directional_light(node)
+	for child in node.get_children():
+		_style_directional_lights(child)
+
+
+func _keep_single_world_environment() -> void:
+	var keep := get_node_or_null("WorldEnvironment") as WorldEnvironment
+	if keep == null:
+		return
+	_remove_other_world_environments(self, keep)
+
+
+func _remove_other_world_environments(node: Node, keep: WorldEnvironment) -> void:
+	if node is WorldEnvironment and node != keep:
+		node.queue_free()
+		return
+	for child in node.get_children():
+		_remove_other_world_environments(child, keep)
 
 
 func _dismiss_end_screen() -> void:
