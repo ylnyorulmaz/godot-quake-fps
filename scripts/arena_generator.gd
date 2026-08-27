@@ -296,14 +296,14 @@ func _pickups() -> void:
 	_item(Vector3(-16, 1.2, 16), Pickup.Kind.SHOTGUN, 15.0)
 	_item(Vector3(16, 1.2, -16), Pickup.Kind.RAIL, 25.0)
 	_item(Vector3(-16, 1.2, -16), Pickup.Kind.ARMOR, 20.0)
-		_item(Vector3(10, 1.2, 36), Pickup.Kind.RL_AMMO, 15.0)
-		_item(Vector3(-10, 1.2, 36), Pickup.Kind.HEALTH, 10.0)
-		_item(Vector3(-30, PLATFORM_HEIGHT + 1.2, 6), Pickup.Kind.MG_AMMO, 10.0)
-		_item(Vector3(-16, 1.2, 8), Pickup.Kind.SG_AMMO, 12.0)
-		_item(Vector3(16, 1.2, -8), Pickup.Kind.RAIL_AMMO, 15.0)
-		_item(Vector3(30, 1.2, -6), Pickup.Kind.MG_AMMO, 10.0)
-		_item(Vector3(-8, 1.2, -28), Pickup.Kind.SG_AMMO, 12.0)
-		_item(Vector3(8, 1.2, 28), Pickup.Kind.RAIL_AMMO, 15.0)
+	_item(Vector3(10, 1.2, 36), Pickup.Kind.RL_AMMO, 15.0)
+	_item(Vector3(-10, 1.2, 36), Pickup.Kind.HEALTH, 10.0)
+	_item(Vector3(-30, PLATFORM_HEIGHT + 1.2, 6), Pickup.Kind.MG_AMMO, 10.0)
+	_item(Vector3(-16, 1.2, 8), Pickup.Kind.SG_AMMO, 12.0)
+	_item(Vector3(16, 1.2, -8), Pickup.Kind.RAIL_AMMO, 15.0)
+	_item(Vector3(30, 1.2, -6), Pickup.Kind.MG_AMMO, 10.0)
+	_item(Vector3(-8, 1.2, -28), Pickup.Kind.SG_AMMO, 12.0)
+	_item(Vector3(8, 1.2, 28), Pickup.Kind.RAIL_AMMO, 15.0)
 
 
 func _item(pos: Vector3, kind: Pickup.Kind, respawn: float) -> void:
