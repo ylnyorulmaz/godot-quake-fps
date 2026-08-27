@@ -222,10 +222,8 @@ func _nav_points() -> void:
 
 
 func _mat(color: Color) -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
+	var mat := ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.FLOOR)
 	mat.albedo_color = color
-	mat.roughness = 0.88
-	mat.metallic = 0.05
 	return mat
 
 
@@ -251,8 +249,7 @@ func _ramp(center: Vector3, length: float, height: float, width: float, yaw_deg:
 	b.use_collision = true
 	b.collision_layer = 1
 	b.collision_mask = 0
-	var mat := StandardMaterial3D.new()
+	var mat := ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.TRIM)
 	mat.albedo_color = color
-	mat.roughness = 0.8
 	b.material = mat
 	world.add_child(b)

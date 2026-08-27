@@ -28,7 +28,6 @@ const HALLWAY_HEIGHT := 3.6
 var _combiner: CSGCombiner3D
 var _pads: Node3D
 var _nav_region: NavigationRegion3D
-var _tex_cache: Dictionary = {}
 
 
 func _ready() -> void:
@@ -396,39 +395,18 @@ func _csg_box(center: Vector3, size: Vector3, mat: Material) -> CSGBox3D:
 
 
 func _mat_floor() -> StandardMaterial3D:
-	return _grid_mat(Color(0.16, 0.17, 0.19), Color(0.24, 0.25, 0.28))
+	return ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.FLOOR)
 
 
 func _mat_wall() -> StandardMaterial3D:
-	return _grid_mat(Color(0.22, 0.2, 0.18), Color(0.32, 0.28, 0.24))
+	return ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.WALL)
 
 
 func _mat_ceiling() -> StandardMaterial3D:
-	return _grid_mat(Color(0.1, 0.1, 0.12), Color(0.16, 0.16, 0.18))
+	return ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.CEILING)
 
 
 func _grid_mat(a: Color, b: Color) -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_texture = _grid_tex(a, b)
-	mat.uv1_triplanar = true
-	mat.uv1_scale = Vector3(0.35, 0.35, 0.35)
-	mat.roughness = 0.88
-	mat.metallic = 0.02
-	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	var mat := ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.TRIM)
+	mat.albedo_color = a.lerp(b, 0.45)
 	return mat
-
-
-func _grid_tex(a: Color, b: Color) -> ImageTexture:
-	var key := "%s|%s" % [a, b]
-	if _tex_cache.has(key):
-		return _tex_cache[key]
-	const S := 64
-	const CELL := 8
-	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
-	for y in S:
-		for x in S:
-			var on := int(x / CELL) % 2 == int(y / CELL) % 2
-			img.set_pixel(x, y, a if on else b)
-	var tex := ImageTexture.create_from_image(img)
-	_tex_cache[key] = tex
-	return tex
