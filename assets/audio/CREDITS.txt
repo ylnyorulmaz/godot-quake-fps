@@ -1,0 +1,6 @@
+Freesound clips wired through scripts/audio_fx.gd:
+
+- 212602 / 212607 — pgi — machine gun loop + single shot
+- 257963 — pgi — shotgun single shot
+- 725402 — serutonin-deprivd — rifle dry fire
+- 738439 — qubodup — orc grunt (hurt)
