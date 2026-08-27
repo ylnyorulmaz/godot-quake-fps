@@ -330,8 +330,13 @@ func _pickups() -> void:
 	var hall_z := 18.0 if Layouts.is_tight(layout) else 36.0
 	_item(Vector3(10, 1.2, hall_z), Pickup.Kind.RL_AMMO, 15.0)
 	_item(Vector3(-10, 1.2, hall_z), Pickup.Kind.HEALTH, 10.0)
+	_item(Vector3(-16, 1.2, 8), Pickup.Kind.SG_AMMO, 12.0)
+	_item(Vector3(16, 1.2, -8), Pickup.Kind.RAIL_AMMO, 15.0)
 	if not Layouts.is_tight(layout):
 		_item(Vector3(-30, PLATFORM_HEIGHT + 1.2, 6), Pickup.Kind.MG_AMMO, 10.0)
+		_item(Vector3(30, 1.2, -6), Pickup.Kind.MG_AMMO, 10.0)
+		_item(Vector3(-8, 1.2, -28), Pickup.Kind.SG_AMMO, 12.0)
+		_item(Vector3(8, 1.2, 28), Pickup.Kind.RAIL_AMMO, 15.0)
 
 
 func _item(pos: Vector3, kind: Pickup.Kind, respawn: float) -> void:

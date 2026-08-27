@@ -18,6 +18,7 @@ const KIND_IDS := {
 
 const ViewGen := preload("res://scripts/weapon_viewmodel.gd")
 const ExplosionHold := preload("res://scripts/explosion.gd")
+const SHELL_CASING := preload("res://scripts/shell_casing.gd")
 
 var current: Kind = Kind.MG
 var state: State = State.IDLE
@@ -228,6 +229,7 @@ func _alt_shotgun() -> bool:
 	ammo[Kind.SHOTGUN] = int(ammo.get(Kind.SHOTGUN, 0)) - 1
 	_fire_hitscan(data, _aim(), ALT_SHOTGUN_PELLETS, ALT_SHOTGUN_SPREAD_DEG)
 	_play_fire_sound(data, _aim().origin)
+	_eject_casing("shotgun")
 	_kick()
 	_fire_timer.start(maxf(data.fire_rate, 0.02))
 	_apply_range(data)
@@ -344,6 +346,10 @@ func _fire(data: WeaponData) -> void:
 	else:
 		_fire_projectile(data, aim)
 	_play_fire_sound(data, aim.origin)
+	if current == Kind.MG:
+		_eject_casing("mg")
+	elif current == Kind.SHOTGUN:
+		_eject_casing("shotgun")
 	_kick()
 	_fire_timer.start(maxf(data.fire_rate, 0.02))
 	_apply_range(data)
@@ -503,6 +509,19 @@ func _spawn_trail(from: Vector3, to: Vector3, data: WeaponData) -> void:
 	fx.configure(from, to, data.trail_color, data.trail_thickness)
 
 
+func _eject_casing(kind: String) -> void:
+	var host := _fx_host()
+	if host == null:
+		return
+	var aim := _aim()
+	var origin := aim.origin + aim.basis.x * 0.12 - aim.basis.y * 0.06
+	if is_player and _muzzle != null and _muzzle.is_inside_tree():
+		origin = _muzzle.global_position + aim.basis.x * 0.08
+	var casing = SHELL_CASING.new()
+	host.add_child(casing)
+	casing.configure(kind, origin, aim.basis.x, -aim.basis.z)
+
+
 func _fx_host() -> Node:
 	if owner_body == null:
 		return self
@@ -579,3 +598,15 @@ func current_name() -> String:
 
 func current_ammo() -> int:
 	return int(ammo.get(current, 0))
+
+
+func ammo_hud_color() -> Color:
+	match current:
+		Kind.SHOTGUN:
+			return Color(0.95, 0.45, 0.12)
+		Kind.ROCKET:
+			return Color(0.95, 0.22, 0.12)
+		Kind.RAIL:
+			return Color(0.25, 0.85, 1.0)
+		_:
+			return Color(0.95, 0.85, 0.4)
