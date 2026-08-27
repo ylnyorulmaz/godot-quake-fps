@@ -16,6 +16,8 @@ const KIND_IDS := {
 	Kind.RAIL: "railgun",
 }
 
+const ViewGen := preload("res://scripts/weapon_viewmodel.gd")
+
 var current: Kind = Kind.MG
 var state: State = State.IDLE
 var owned := {Kind.MG: true, Kind.SHOTGUN: false, Kind.ROCKET: false, Kind.RAIL: false}
@@ -110,7 +112,7 @@ func _build_viewmodel() -> void:
 	add_child(viewmodel)
 	for kind in _KIND_ORDER:
 		var data: WeaponData = _catalog[kind]
-		var gun := WeaponViewmodel.build(data.id)
+		var gun := ViewGen.build(data.id)
 		gun.name = data.display_name
 		gun.visible = kind == current
 		viewmodel.add_child(gun)

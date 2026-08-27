@@ -2,8 +2,8 @@ extends SceneTree
 ## Procedural weapon skins / viewmodels.
 ## Run: godot --headless --path . -s res://tests/test_weapon_skin.gd
 
-const Skin := preload("res://scripts/weapon_skin.gd")
-const View := preload("res://scripts/weapon_viewmodel.gd")
+const WSkin := preload("res://scripts/weapon_skin.gd")
+const WView := preload("res://scripts/weapon_viewmodel.gd")
 
 
 func _init() -> void:
@@ -21,7 +21,7 @@ func _init() -> void:
 
 
 func _test_steel_nearest() -> int:
-	var mat: StandardMaterial3D = Skin.steel()
+	var mat: StandardMaterial3D = WSkin.steel()
 	var tex := mat.albedo_texture as ImageTexture
 	if tex == null or tex.get_width() != 128 or tex.get_height() != 128:
 		push_error("steel albedo should be 128x128")
@@ -37,12 +37,12 @@ func _test_steel_nearest() -> int:
 
 
 func _test_wood_differs() -> int:
-	var steel_img := (Skin.steel().albedo_texture as ImageTexture).get_image()
-	var wood_img := (Skin.wood().albedo_texture as ImageTexture).get_image()
+	var steel_img := (WSkin.steel().albedo_texture as ImageTexture).get_image()
+	var wood_img := (WSkin.wood().albedo_texture as ImageTexture).get_image()
 	if steel_img.get_pixel(20, 20).is_equal_approx(wood_img.get_pixel(20, 20)):
 		push_error("wood and steel skins look identical")
 		return 1
-	var wood: StandardMaterial3D = Skin.wood()
+	var wood: StandardMaterial3D = WSkin.wood()
 	if wood.metallic > 0.1:
 		push_error("wood should not be metallic")
 		return 1
@@ -51,7 +51,7 @@ func _test_wood_differs() -> int:
 
 
 func _test_energy_emits() -> int:
-	var mat: StandardMaterial3D = Skin.energy()
+	var mat: StandardMaterial3D = WSkin.energy()
 	if not mat.emission_enabled or mat.emission_texture == null:
 		push_error("rail energy skin should emit")
 		return 1
@@ -61,7 +61,7 @@ func _test_energy_emits() -> int:
 
 func _test_viewmodels_are_compound() -> int:
 	for id in ["machinegun", "shotgun", "rocket", "railgun"]:
-		var gun: Node3D = View.build(id)
+		var gun: Node3D = WView.build(id)
 		root.add_child(gun)
 		var meshes := 0
 		var textured := 0

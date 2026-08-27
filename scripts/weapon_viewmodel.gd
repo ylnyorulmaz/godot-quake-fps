@@ -2,6 +2,8 @@ class_name WeaponViewmodel
 extends RefCounted
 ## First-person guns from primitives + WeaponSkin. No GLB assets.
 
+const SkinGen := preload("res://scripts/weapon_skin.gd")
+
 
 static func build(weapon_id: String) -> Node3D:
 	var root := Node3D.new()
@@ -19,8 +21,8 @@ static func build(weapon_id: String) -> Node3D:
 
 
 static func _machinegun(root: Node3D) -> void:
-	var steel := WeaponSkin.steel(11)
-	var mag := WeaponSkin.blued(19)
+	var steel := SkinGen.steel(11)
+	var mag := SkinGen.blued(19)
 	_box(root, Vector3(0.09, 0.1, 0.28), Vector3(0.0, 0.0, -0.04), steel)
 	_cyl(root, 0.02, 0.38, Vector3(0.0, 0.02, -0.32), steel)
 	_box(root, Vector3(0.05, 0.14, 0.09), Vector3(0.0, -0.1, 0.02), mag)
@@ -29,8 +31,8 @@ static func _machinegun(root: Node3D) -> void:
 
 
 static func _shotgun(root: Node3D) -> void:
-	var wood := WeaponSkin.wood(41)
-	var metal := WeaponSkin.blued(5)
+	var wood := SkinGen.wood(41)
+	var metal := SkinGen.blued(5)
 	_box(root, Vector3(0.07, 0.08, 0.22), Vector3(0.0, -0.01, 0.16), wood)
 	_box(root, Vector3(0.08, 0.09, 0.18), Vector3(0.0, 0.0, -0.02), metal)
 	_cyl(root, 0.018, 0.42, Vector3(0.018, 0.02, -0.28), metal)
@@ -40,8 +42,8 @@ static func _shotgun(root: Node3D) -> void:
 
 
 static func _rocket(root: Node3D) -> void:
-	var rust := WeaponSkin.rust(7)
-	var steel := WeaponSkin.steel(3)
+	var rust := SkinGen.rust(7)
+	var steel := SkinGen.steel(3)
 	_cyl(root, 0.07, 0.52, Vector3(0.0, 0.02, -0.12), rust)
 	_cyl(root, 0.085, 0.1, Vector3(0.0, 0.02, -0.4), rust)
 	_box(root, Vector3(0.06, 0.12, 0.1), Vector3(0.0, -0.08, 0.08), steel)
@@ -50,8 +52,8 @@ static func _rocket(root: Node3D) -> void:
 
 
 static func _rail(root: Node3D) -> void:
-	var steel := WeaponSkin.blued(61)
-	var glow := WeaponSkin.energy(99)
+	var steel := SkinGen.blued(61)
+	var glow := SkinGen.energy(99)
 	_box(root, Vector3(0.07, 0.08, 0.22), Vector3(0.0, 0.0, 0.08), steel)
 	_cyl(root, 0.016, 0.62, Vector3(0.0, 0.02, -0.28), glow)
 	_ring(root, 0.04, 0.012, Vector3(0.0, 0.02, -0.18), glow)
