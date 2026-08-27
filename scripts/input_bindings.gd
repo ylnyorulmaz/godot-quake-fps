@@ -29,6 +29,7 @@ func _ready() -> void:
 	_mouse("next_weapon", MOUSE_BUTTON_WHEEL_UP)
 	_mouse("prev_weapon", MOUSE_BUTTON_WHEEL_DOWN)
 	_key("scoreboard", KEY_TAB)
+	_key("restart", KEY_R)
 	_key("fullscreen", KEY_F11)
 
 

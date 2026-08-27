@@ -10,6 +10,7 @@ func _init() -> void:
 	failed += _test_player_wins()
 	failed += _test_bot_wins()
 	failed += _test_world_does_not_win()
+	failed += _test_scoreboard_kd()
 	if failed > 0:
 		push_error("game_state tests failed: %d" % failed)
 		quit(1)
@@ -75,5 +76,40 @@ func _test_world_does_not_win() -> int:
 		push_error("world kill ended the match")
 		return 1
 	print("ok   world kills do not award a win")
+	gs.queue_free()
+	return 0
+
+
+func _test_scoreboard_kd() -> int:
+	var gs = _fresh()
+	gs.frag_limit = 3
+	gs.register_bot("Grunt")
+	gs.register_bot("Ranger")
+	gs.start_match()
+	gs.add_frag("YOU", "Grunt", true, false)
+	gs.add_frag("Ranger", "YOU", false, true)
+	gs.add_frag("YOU", "Ranger", true, false)
+	gs.add_frag("YOU", "Grunt", true, false)
+	if gs.match_running:
+		push_error("match should end at 3 frags")
+		return 1
+	if int(gs.bot_deaths.get("Grunt", -1)) != 2:
+		push_error("Grunt deaths should be 2, got %s" % gs.bot_deaths.get("Grunt", -1))
+		return 1
+	if gs.player_deaths != 1:
+		push_error("player deaths should be 1, got %s" % gs.player_deaths)
+		return 1
+	var rows: Array = gs.standings()
+	if rows.is_empty() or str(rows[0]["name"]) != gs.PLAYER_NAME or int(rows[0]["kills"]) != 3:
+		push_error("standings should lead with YOU at 3 kills")
+		return 1
+	var text: String = gs.scoreboard_text()
+	if text.find("K") < 0 or text.find("D") < 0 or text.find("Grunt") < 0:
+		push_error("scoreboard text missing columns: %s" % text)
+		return 1
+	if gs.last_winner != gs.PLAYER_NAME:
+		push_error("winner should be YOU")
+		return 1
+	print("ok   scoreboard lists names, kills, deaths")
 	gs.queue_free()
 	return 0
