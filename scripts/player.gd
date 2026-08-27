@@ -85,7 +85,7 @@ var _was_on_floor := false
 var _launch_ignore_frames := 0
 var _move := QuakeMoveParams.new()
 var _last_attacker: Node = null
-var _power
+var _power: PowerUpHold
 var _power_overlay: StandardMaterial3D
 var _power_glow: OmniLight3D
 
@@ -181,7 +181,7 @@ func _cache_nodes() -> void:
 	weapons = $Head/Camera3D/WeaponManager
 	_mesh = get_node_or_null("BodyMesh") as MeshInstance3D
 	health_comp = get_node_or_null("HealthComponent") as HealthComponent
-	_power = get_node_or_null("PowerUpState") as Node
+	_power = get_node_or_null("PowerUpState") as PowerUpHold
 	_power_glow = get_node_or_null("PowerGlow") as OmniLight3D
 	# Hide own capsule from the first-person camera.
 	_cam.cull_mask = _cam.cull_mask & ~2
@@ -438,7 +438,7 @@ func apply_power_up(kind: int, seconds: float = -1.0) -> bool:
 func _tick_power(delta: float) -> void:
 	if _power == null:
 		return
-	var was_on := _power.is_active()
+	var was_on: bool = _power.is_active()
 	_power.tick(delta)
 	if was_on or _power.is_active():
 		_refresh_power_visual()
