@@ -93,7 +93,7 @@ var _power_glow: OmniLight3D
 func _ready() -> void:
 	add_to_group("player")
 	collision_layer = 2
-	collision_mask = 1 | 4 | 8 | 16
+	collision_mask = 1 | 4 | 8 | 16 | 32
 	floor_stop_on_slope = false
 	floor_max_angle = deg_to_rad(60.0)
 	floor_snap_length = DEFAULT_FLOOR_SNAP

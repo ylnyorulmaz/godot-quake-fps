@@ -103,7 +103,7 @@ var _power_overlay: StandardMaterial3D
 func _ready() -> void:
 	add_to_group("bots")
 	collision_layer = 4
-	collision_mask = 1 | 2 | 8 | 16
+	collision_mask = 1 | 2 | 8 | 16 | 32
 	floor_stop_on_slope = false
 	floor_max_angle = deg_to_rad(60.0)
 	floor_snap_length = DEFAULT_SNAP
@@ -263,7 +263,7 @@ func _configure_los() -> void:
 	_los.collide_with_bodies = true
 	_los.collide_with_areas = false
 	# World + player + other bots.
-	_los.collision_mask = 1 | 2 | 4
+	_los.collision_mask = 1 | 2 | 4 | 32
 	_los.exclude_parent = true
 	_los.target_position = Vector3(0.0, 0.0, -1.0)
 
@@ -568,6 +568,9 @@ func _collect_foes(player: Node3D) -> Array[Node3D]:
 	for n in get_tree().get_nodes_in_group("bots"):
 		if _is_usable_foe(n):
 			out.append(n as Node3D)
+	for n in get_tree().get_nodes_in_group("neutrals"):
+		if _is_usable_foe(n):
+			out.append(n as Node3D)
 	return out
 
 
@@ -646,7 +649,7 @@ func _fire_hitscan(target: Node3D) -> void:
 	if space == null:
 		return
 	var q := PhysicsRayQueryParameters3D.create(from, to)
-	q.collision_mask = 1 | 2 | 4
+	q.collision_mask = 1 | 2 | 4 | 32
 	q.exclude = [get_rid()]
 	q.collide_with_areas = false
 	var hit := space.intersect_ray(q)

@@ -37,7 +37,7 @@ var _use_aim_override := false
 var _view_kick := Vector3.ZERO
 
 const _KIND_ORDER: Array[Kind] = [Kind.MG, Kind.SHOTGUN, Kind.ROCKET, Kind.RAIL]
-const HIT_MASK := 1 | 2 | 4
+const HIT_MASK := 1 | 2 | 4 | 32
 const SWITCH_TIME := 0.12
 
 

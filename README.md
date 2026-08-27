@@ -75,6 +75,10 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 
 First to `frag_limit` (20) wins — player or bot. End screen shows `NAME WINS · N frags`.
 
+## Neutral creatures
+
+`scripts/NeutralCreature.gd` is a green melee critter (`CharacterBody3D`). It stores `attack_target` (Player or Enemy), walks toward the nearest one inside `activation_radius`, and swings in `melee_range`. **100 HP**; `take_damage` kills it at 0. Physics layer **32** so health/armor/power-up areas (mask 2+4) never see it — no `apply_pickup` / `apply_power_up`. Two spawn on the arena.
+
 ## Custom 3D model
 
 `assets/warrior.glb` (Grunt), `assets/Warrior2.glb` (Ranger), and `assets/female.glb` (Visl) load on match start. Warrior credit: iRahulRajput, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — `assets/models/CREDITS.md`.

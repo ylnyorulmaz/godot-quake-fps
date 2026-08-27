@@ -50,6 +50,7 @@ func _build() -> void:
 	_mega_health()
 	_pickups()
 	_power_ups()
+	_neutrals()
 	_spawns()
 	_nav_points()
 	_lights()
@@ -321,6 +322,13 @@ func _power_item(pos: Vector3, kind: PowerUp.Kind, wild: bool) -> void:
 	item.relocate_on_respawn = wild
 	item.randomize_kind_on_respawn = wild
 	add_child(item)
+
+
+func _neutrals() -> void:
+	for pos in [Vector3(8.0, 1.2, -28.0), Vector3(-12.0, 1.2, 28.0)]:
+		var critter := NeutralCreature.new()
+		critter.position = pos
+		add_child(critter)
 
 
 func _spawns() -> void:
