@@ -134,24 +134,25 @@ func _environment() -> void:
 	we.name = "WorldEnvironment"
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.035, 0.04, 0.05)
+	env.background_color = Color(0.42, 0.48, 0.55)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.28, 0.3, 0.34)
-	env.ambient_light_energy = 0.45
-	env.fog_enabled = true
-	env.fog_light_color = Color(0.08, 0.09, 0.1)
-	env.fog_density = 0.008
+	env.ambient_light_color = Color(0.62, 0.58, 0.52)
+	env.ambient_light_energy = 1.15
+	env.fog_enabled = false
 	env.glow_enabled = false
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	if "tonemap_exposure" in env:
+		env.tonemap_exposure = 1.2
 	we.environment = env
 	add_child(we)
 
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.rotation_degrees = Vector3(-48, 40, 0)
-	sun.light_color = Color(1.0, 0.92, 0.82)
-	sun.light_energy = 0.85
-	sun.shadow_enabled = true
+	sun.rotation_degrees = Vector3(-55, 35, 0)
+	sun.light_color = Color(1.0, 0.94, 0.84)
+	sun.light_energy = 1.7
+	# A closed ceiling + directional shadows blacked out the whole floor.
+	sun.shadow_enabled = false
 	add_child(sun)
 
 
@@ -166,8 +167,8 @@ func _floor_and_hull() -> void:
 	_csg_box(Vector3(0, h * 0.5, half), Vector3(FLOOR_SIZE + 1.0, h, 1.0), wall)
 	_csg_box(Vector3(-half, h * 0.5, 0), Vector3(1.0, h, FLOOR_SIZE + 1.0), wall)
 	_csg_box(Vector3(half, h * 0.5, 0), Vector3(1.0, h, FLOOR_SIZE + 1.0), wall)
-	# Ceiling so the hallway FOV test has a consistent sky/indoor contrast.
-	_csg_box(Vector3(0, h, 0), Vector3(FLOOR_SIZE + 1.0, 1.0, FLOOR_SIZE + 1.0), _mat_ceiling())
+	# Open sky: a full ceiling plus directional shadows made the metallic
+	# floor unreadable on the Compatibility renderer.
 
 
 func _ramps() -> void:
@@ -338,9 +339,9 @@ func _lights() -> void:
 	]:
 		var light := OmniLight3D.new()
 		light.position = p
-		light.light_color = Color(1.0, 0.85, 0.7)
-		light.light_energy = 2.4
-		light.omni_range = 24.0
+		light.light_color = Color(1.0, 0.9, 0.75)
+		light.light_energy = 4.5
+		light.omni_range = 32.0
 		add_child(light)
 
 
@@ -395,18 +396,28 @@ func _csg_box(center: Vector3, size: Vector3, mat: Material) -> CSGBox3D:
 
 
 func _mat_floor() -> StandardMaterial3D:
-	return ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.FLOOR)
+	return _lit_plate(ArenaPlateMaterial.Kind.FLOOR, Color(1.45, 1.32, 1.18))
 
 
 func _mat_wall() -> StandardMaterial3D:
-	return ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.WALL)
+	return _lit_plate(ArenaPlateMaterial.Kind.WALL, Color(1.38, 1.28, 1.16))
 
 
 func _mat_ceiling() -> StandardMaterial3D:
-	return ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.CEILING)
+	return _lit_plate(ArenaPlateMaterial.Kind.CEILING, Color(1.25, 1.22, 1.2))
 
 
 func _grid_mat(a: Color, b: Color) -> StandardMaterial3D:
 	var mat := ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.TRIM)
-	mat.albedo_color = a.lerp(b, 0.45)
+	mat.albedo_color = a.lerp(b, 0.45).lightened(0.12)
+	mat.metallic = 0.22
+	mat.roughness = 0.58
+	return mat
+
+
+func _lit_plate(kind: ArenaPlateMaterial.Kind, albedo: Color) -> StandardMaterial3D:
+	var mat := ArenaPlateMaterial.make_material(kind)
+	mat.albedo_color = albedo
+	mat.metallic = 0.22
+	mat.roughness = 0.58
 	return mat

@@ -56,17 +56,18 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 - Jump pads (`scenes/jump_pad.tscn`) and a respawning Mega-Health (`scenes/mega_health.tscn`)
 - Spawn / nav markers so deathmatch still runs on the same map
 - `NavigationRegion3D` wraps the CSG hull; a navmesh is baked at runtime for bots
-- Surfaces use [`scripts/arena_plate_material.gd`](scripts/arena_plate_material.gd): 256×256 FastNoiseLite **cellular** plates, Quake rust/metal gradient (`#1a1a1a` / `#3a2a20` / `#5a5a5a`), nearest filter, `metallic` 0.6 / `roughness` 0.4, optional normal from plate grooves. Drop the node under a `MeshInstance3D` or call `ArenaPlateMaterial.apply_to(mesh)`.
+- Surfaces use [`scripts/arena_plate_material.gd`](scripts/arena_plate_material.gd): 256×256 FastNoiseLite **cellular** plates, Quake rust/metal gradient (`#1a1a1a` / `#3a2a20` / `#5a5a5a`), nearest filter, optional normal from plate grooves. Drop the node under a `MeshInstance3D` or call `ArenaPlateMaterial.apply_to(mesh)`. Arena lighting is an open sky (no full ceiling), strong ambient, and no directional shadows so the metallic floor stays readable.
 
 ## Combat bots
 
 `EnemyBot` (`scripts/enemy_bot.gd`, `scenes/enemy_bot.tscn`) is a `CharacterBody3D` with `NavigationAgent3D`, a LOS `RayCast3D`, `ShootTimer`, and `HealthComponent`.
 
 - Chases the player via `get_next_path_position()` with acceleration + gravity
-- On line-of-sight, stops following the path and strafes while firing a hitscan (spread from `accuracy_error`)
+- On line-of-sight, stops following the path and strafes while firing a hitscan (spread from `accuracy_error` degrees)
+- Free-for-all: bots shoot the closest visible foe (player **or** another bot), with revenge on last attacker
 - Exports: `movement_speed`, `attack_cooldown`, `vision_range`, `accuracy_error`
 - Missing or dead players are ignored; the bot wanders nav points instead
-- **Custom mesh:** `assets/warrior.glb`, `assets/Warrior2.glb`, `assets/female.glb`. Capsules hide; collision stays the 1.8 m capsule. These GLBs have **no clips**, so bots use a short vertical bob. Drop a rigged GLB with `Idle` / `Walk` / `Run` / `Jump` and [`scripts/locomotion_anim.gd`](scripts/locomotion_anim.gd) builds an AnimationTree (BlendSpace1D on the ground, state-machine xfade to Air). `model_yaw_degrees` default **180**.
+- **Custom mesh:** `assets/warrior.glb`, `assets/Warrior2.glb`, `assets/female.glb`. Capsules hide; collision stays the 1.8 m capsule. These GLBs have **no clips**, so walking uses a stride bob (height + roll). Drop a rigged GLB with `Idle` / `Walk` / `Run` / `Jump` and [`scripts/locomotion_anim.gd`](scripts/locomotion_anim.gd) builds an AnimationTree (BlendSpace1D on the ground, state-machine xfade to Air). `model_yaw_degrees` default **180**.
 
 First to `frag_limit` (20) wins — player or bot. End screen shows `NAME WINS · N frags`.
 
