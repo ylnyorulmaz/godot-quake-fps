@@ -30,15 +30,25 @@ func _ready() -> void:
 	add_child(col)
 
 	_mesh = MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.55, 0.55, 0.55)
-	_mesh.mesh = box
+	if kind == Kind.HEALTH or kind == Kind.MEGA_HEALTH:
+		_mesh.mesh = _plus_mesh()
+	else:
+		var box := BoxMesh.new()
+		box.size = Vector3(0.55, 0.55, 0.55)
+		_mesh.mesh = box
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = _color()
 	mat.emission_enabled = true
 	mat.emission = _color()
 	mat.emission_energy_multiplier = 2.2
 	_mesh.material_override = mat
+	if kind == Kind.HEALTH or kind == Kind.MEGA_HEALTH:
+		var bar := MeshInstance3D.new()
+		var upright := BoxMesh.new()
+		upright.size = Vector3(0.22, 0.7, 0.22)
+		bar.mesh = upright
+		bar.material_override = mat
+		_mesh.add_child(bar)
 	add_child(_mesh)
 
 	_light = OmniLight3D.new()
@@ -73,6 +83,12 @@ func _color() -> Color:
 			return Color(0.75, 0.75, 0.35)
 
 
+func _plus_mesh() -> BoxMesh:
+	var box := BoxMesh.new()
+	box.size = Vector3(0.7, 0.22, 0.22)
+	return box
+
+
 func _on_body(body: Node3D) -> void:
 	if not _ready_item:
 		return
@@ -82,7 +98,9 @@ func _on_body(body: Node3D) -> void:
 		_ready_item = false
 		_mesh.visible = false
 		_light.visible = false
-		AudioFx.play_at("pickup", global_position)
+		var fx := get_node_or_null("/root/AudioFx")
+		if fx and fx.has_method("play_at"):
+			fx.call("play_at", "pickup", global_position)
 		await get_tree().create_timer(respawn_time).timeout
 		_ready_item = true
 		_mesh.visible = true

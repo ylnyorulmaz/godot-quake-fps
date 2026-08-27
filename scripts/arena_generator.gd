@@ -1,11 +1,6 @@
 class_name ArenaGenerator
 extends Node3D
-## Procedural CSG movement-test arena.
-##
-## Built for Quake-style ground speed, slope physics, strafe-jump distance,
-## enclosed speed/FOV checks, and jump-pad launches. Geometry is generated
-## in `_ready()` so instancing this node (or opening its scene) produces a
-## complete blockout immediately.
+## Procedural CSG deathmatch arena (Quake 3 void / industrial lighting).
 ##
 ## Tree:
 ##   ArenaGenerator (this)
@@ -13,6 +8,8 @@ extends Node3D
 ##       CSGCombiner3D
 ##     JumpPadsContainer
 ##     MegaHealth, spawn markers, lights, extra pickups
+
+const Atmosphere := preload("res://scripts/arena_atmosphere.gd")
 
 const FLOOR_SIZE := 100.0
 const RAMP_RUN := 18.0
@@ -47,6 +44,7 @@ func _build() -> void:
 	_hallway()
 	_cover()
 	_jump_pads()
+	_teleporters()
 	_mega_health()
 	_pickups()
 	_power_ups()
@@ -54,7 +52,6 @@ func _build() -> void:
 	_spawns()
 	_nav_points()
 	_lights()
-	_labels()
 
 
 func _bake_navigation() -> void:
@@ -134,43 +131,61 @@ func _environment() -> void:
 		return
 	var we := WorldEnvironment.new()
 	we.name = "WorldEnvironment"
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.42, 0.48, 0.55)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.62, 0.58, 0.52)
-	env.ambient_light_energy = 1.15
-	env.fog_enabled = false
-	env.glow_enabled = false
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	if "tonemap_exposure" in env:
-		env.tonemap_exposure = 1.2
-	we.environment = env
+	we.environment = Atmosphere.make_environment()
 	add_child(we)
-
-	var sun := DirectionalLight3D.new()
-	sun.name = "Sun"
-	sun.rotation_degrees = Vector3(-55, 35, 0)
-	sun.light_color = Color(1.0, 0.94, 0.84)
-	sun.light_energy = 1.7
-	# A closed ceiling + directional shadows blacked out the whole floor.
-	sun.shadow_enabled = false
-	add_child(sun)
+	add_child(Atmosphere.make_sun())
+	add_child(Atmosphere.make_starfield())
 
 
 func _floor_and_hull() -> void:
 	# Massive test floor: top face sits on y = 0.
 	_csg_box(Vector3(0, -0.5, 0), Vector3(FLOOR_SIZE, 1.0, FLOOR_SIZE), _mat_floor())
 	# Perimeter walls keep rocket-jumps and overshoots inside the volume.
-	var wall := _mat_wall()
+	var wall: StandardMaterial3D = _mat_wall()
 	var h := 16.0
 	var half := FLOOR_SIZE * 0.5 + 0.5
 	_csg_box(Vector3(0, h * 0.5, -half), Vector3(FLOOR_SIZE + 1.0, h, 1.0), wall)
 	_csg_box(Vector3(0, h * 0.5, half), Vector3(FLOOR_SIZE + 1.0, h, 1.0), wall)
 	_csg_box(Vector3(-half, h * 0.5, 0), Vector3(1.0, h, FLOOR_SIZE + 1.0), wall)
 	_csg_box(Vector3(half, h * 0.5, 0), Vector3(1.0, h, FLOOR_SIZE + 1.0), wall)
-	# Open sky: a full ceiling plus directional shadows made the metallic
-	# floor unreadable on the Compatibility renderer.
+	# Ring ceiling: enclosed rim, open void in the middle (Longest Yard silhouette).
+	# No directional shadows — Compatibility went black with a full lid.
+	_ceiling_ring(h, wall)
+	_center_pit(wall)
+	_corner_pillars(wall)
+
+
+func _ceiling_ring(wall_h: float, wall: Material) -> void:
+	var thick := 11.0
+	var y := wall_h + 0.25
+	var half := FLOOR_SIZE * 0.5
+	var ceil_mat: StandardMaterial3D = _mat_ceiling()
+	_csg_box(Vector3(0, y, -half + thick * 0.5), Vector3(FLOOR_SIZE, 0.5, thick), ceil_mat)
+	_csg_box(Vector3(0, y, half - thick * 0.5), Vector3(FLOOR_SIZE, 0.5, thick), ceil_mat)
+	var mid := FLOOR_SIZE - thick * 2.0
+	_csg_box(Vector3(-half + thick * 0.5, y, 0), Vector3(thick, 0.5, mid), ceil_mat)
+	_csg_box(Vector3(half - thick * 0.5, y, 0), Vector3(thick, 0.5, mid), ceil_mat)
+	# Light strips under the rim.
+	_csg_box(Vector3(0, wall_h - 0.4, -half + 1.2), Vector3(FLOOR_SIZE - 4.0, 0.12, 0.35), wall)
+	_csg_box(Vector3(0, wall_h - 0.4, half - 1.2), Vector3(FLOOR_SIZE - 4.0, 0.12, 0.35), wall)
+
+
+func _center_pit(wall: Material) -> void:
+	const PIT := 16.0
+	_csg_box(Vector3(0, -0.5, 0), Vector3(PIT, 2.2, PIT), _mat_floor(), CSGShape3D.OPERATION_SUBTRACTION)
+	_csg_box(Vector3(0, -3.5, 0), Vector3(PIT, 1.0, PIT), Atmosphere.lava_material())
+	_csg_box(Vector3(-(PIT * 0.5 + 0.4), -1.75, 0), Vector3(0.8, 3.5, PIT + 1.6), wall)
+	_csg_box(Vector3(PIT * 0.5 + 0.4, -1.75, 0), Vector3(0.8, 3.5, PIT + 1.6), wall)
+	# +Z / -Z stay open so the pit ramps meet the main floor.
+	var rust := Color(0.42, 0.22, 0.1)
+	var angle := rad_to_deg(atan(3.0 / 5.6))
+	_ramp_polygon(Vector3(0.0, -3.0, 2.5), 5.6, angle, 3.0, -90.0, rust)
+	_ramp_polygon(Vector3(0.0, -3.0, -2.5), 5.6, angle, 3.0, 90.0, rust)
+
+
+func _corner_pillars(wall: Material) -> void:
+	for xz in [Vector3(42, 8, 42), Vector3(-42, 8, 42), Vector3(42, 8, -42), Vector3(-42, 8, -42)]:
+		_csg_box(xz, Vector3(3.2, 16.0, 3.2), wall)
 
 
 func _ramps() -> void:
@@ -255,8 +270,8 @@ func _cover() -> void:
 
 
 func _jump_pads() -> void:
-	# Vertical pop — rocket-jump alternative / height check.
-	_add_pad(Vector3(0.0, 0.08, 0.0), Vector3(0, 22, 0), 0.0)
+	# Vertical pop from the lava pit (Q3 center pad).
+	_add_pad(Vector3(0.0, -2.88, 0.0), Vector3(0, 24, 0), 0.0)
 	# Aimed at the gap course start.
 	_add_pad(Vector3(-18.0, 0.08, -4.0), Vector3(-8, 14, 10), 0.0)
 	# Hallway injector: long, low launch so you enter already at speed.
@@ -279,6 +294,19 @@ func _add_pad(pos: Vector3, boost: Vector3, yaw_deg: float) -> void:
 	_pads.add_child(pad)
 
 
+func _teleporters() -> void:
+	var a := Teleporter.new()
+	a.name = "TeleporterA"
+	a.position = Vector3(34.0, 1.0, 36.0)
+	a.target = Vector3(-38.0, 1.2, -38.0)
+	add_child(a)
+	var b := Teleporter.new()
+	b.name = "TeleporterB"
+	b.position = Vector3(-34.0, 1.0, -36.0)
+	b.target = Vector3(38.0, 1.2, 38.0)
+	add_child(b)
+
+
 func _mega_health() -> void:
 	var packed := load("res://scenes/mega_health.tscn") as PackedScene
 	var item: Node3D
@@ -286,7 +314,7 @@ func _mega_health() -> void:
 		item = packed.instantiate() as Node3D
 	else:
 		item = MegaHealth.new()
-	item.position = Vector3(6.0, 1.1, -6.0)
+	item.position = Vector3(18.0, 1.1, -14.0)
 	add_child(item)
 
 
@@ -347,7 +375,7 @@ func _spawns() -> void:
 func _nav_points() -> void:
 	var pts := [
 		Vector3(20, 1, 20), Vector3(-20, 1, 20), Vector3(20, 1, -20), Vector3(-20, 1, -20),
-		Vector3(0, 1, 0), Vector3(-30, 5, 20), Vector3(20, 4, -20), Vector3(0, 1, 36),
+		Vector3(0, -2, 0), Vector3(-30, 5, 20), Vector3(20, 4, -20), Vector3(0, 1, 36),
 	]
 	for p in pts:
 		var m := Marker3D.new()
@@ -357,37 +385,12 @@ func _nav_points() -> void:
 
 
 func _lights() -> void:
-	for p in [
-		Vector3(0, 10, 0), Vector3(24, 8, 24), Vector3(-24, 8, 24),
-		Vector3(24, 8, -24), Vector3(-24, 8, -24), Vector3(0, 5, 36),
-		Vector3(16, 8, -20), Vector3(-30, 8, 16),
-	]:
-		var light := OmniLight3D.new()
-		light.position = p
-		light.light_color = Color(1.0, 0.9, 0.75)
-		light.light_energy = 4.5
-		light.omni_range = 32.0
-		add_child(light)
-
-
-func _labels() -> void:
-	_billboard(Vector3(8.0 + RAMP_RUN * 0.5, 2.4, -32.0), "15° RAMP")
-	_billboard(Vector3(8.0 + RAMP_RUN * 0.5, 4.0, -24.0), "30° RAMP")
-	_billboard(Vector3(8.0 + RAMP_RUN * 0.5, 6.0, -16.0), "45° RAMP")
-	_billboard(Vector3(-30.0, PLATFORM_HEIGHT + 2.5, 6.0), "STRAFE GAPS  4–12")
-	_billboard(Vector3(-20.0, 2.8, 36.0), "SPEED HALLWAY")
-
-
-func _billboard(pos: Vector3, text: String) -> void:
-	var lab := Label3D.new()
-	lab.text = text
-	lab.position = pos
-	lab.font_size = 64
-	lab.modulate = Color(1.0, 0.92, 0.45)
-	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	lab.outline_size = 8
-	lab.outline_modulate = Color(0, 0, 0, 0.85)
-	add_child(lab)
+	for entry in Atmosphere.light_rig():
+		var pos: Vector3 = entry["pos"]
+		var color: Color = entry["color"]
+		var energy: float = float(entry["energy"])
+		var omni_range: float = float(entry["range"])
+		add_child(Atmosphere.make_fill_light(pos, color, energy, omni_range))
 
 
 func _ramp_polygon(origin: Vector3, run: float, angle_deg: float, width: float, yaw_deg: float, color: Color) -> void:
@@ -411,38 +414,39 @@ func _ramp_polygon(origin: Vector3, run: float, angle_deg: float, width: float, 
 	slab.rotate_object_local(Vector3.RIGHT, -angle)
 
 
-func _csg_box(center: Vector3, size: Vector3, mat: Material) -> CSGBox3D:
+func _csg_box(center: Vector3, size: Vector3, mat: Material, operation: int = CSGShape3D.OPERATION_UNION) -> CSGBox3D:
 	var b := CSGBox3D.new()
 	b.size = size
 	b.position = center
 	b.material = mat
+	b.operation = operation
 	_combiner.add_child(b)
 	return b
 
 
 func _mat_floor() -> StandardMaterial3D:
-	return _lit_plate(ArenaPlateMaterial.Kind.FLOOR, Color(1.45, 1.32, 1.18))
+	return _lit_plate(ArenaPlateMaterial.Kind.FLOOR, Color(0.92, 0.84, 0.74))
 
 
 func _mat_wall() -> StandardMaterial3D:
-	return _lit_plate(ArenaPlateMaterial.Kind.WALL, Color(1.38, 1.28, 1.16))
+	return _lit_plate(ArenaPlateMaterial.Kind.WALL, Color(0.78, 0.7, 0.62))
 
 
 func _mat_ceiling() -> StandardMaterial3D:
-	return _lit_plate(ArenaPlateMaterial.Kind.CEILING, Color(1.25, 1.22, 1.2))
+	return _lit_plate(ArenaPlateMaterial.Kind.CEILING, Color(0.55, 0.52, 0.5))
 
 
 func _grid_mat(a: Color, b: Color) -> StandardMaterial3D:
 	var mat := ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.TRIM)
-	mat.albedo_color = a.lerp(b, 0.45).lightened(0.12)
-	mat.metallic = 0.22
-	mat.roughness = 0.58
+	mat.albedo_color = a.lerp(b, 0.45).lightened(0.08)
+	mat.metallic = 0.18
+	mat.roughness = 0.62
 	return mat
 
 
 func _lit_plate(kind: ArenaPlateMaterial.Kind, albedo: Color) -> StandardMaterial3D:
 	var mat := ArenaPlateMaterial.make_material(kind)
 	mat.albedo_color = albedo
-	mat.metallic = 0.22
-	mat.roughness = 0.58
+	mat.metallic = 0.18
+	mat.roughness = 0.62
 	return mat

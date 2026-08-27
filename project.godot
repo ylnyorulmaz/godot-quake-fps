@@ -56,4 +56,4 @@ ui_cancel={
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 lights_and_shadows/directional_shadow/size=2048
-environment/defaults/default_clear_color=Color(0.32, 0.36, 0.42, 1)
+environment/defaults/default_clear_color=Color(0.018, 0.022, 0.045, 1)
