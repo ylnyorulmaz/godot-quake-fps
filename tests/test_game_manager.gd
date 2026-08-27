@@ -47,5 +47,8 @@ func _test_main_has_difficulty_picker() -> int:
 	if src.find("_build_difficulty_picker") < 0 or src.find("_set_difficulty") < 0:
 		push_error("title screen is missing the difficulty picker")
 		return 1
-	print("ok   title screen exposes Easy/Normal/Hard")
+	if src.find("_build_personality_picker") < 0 or src.find("_cycle_personality") < 0:
+		push_error("title screen is missing the personality picker")
+		return 1
+	print("ok   title screen exposes difficulty and bot personality")
 	return 0
