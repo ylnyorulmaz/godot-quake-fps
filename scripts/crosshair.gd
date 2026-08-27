@@ -229,8 +229,10 @@ func _draw_rail(c: Vector2, col: Color) -> void:
 	var glow := Color(col.r, col.g, col.b, col.a * 0.28)
 	var g := _gap
 	var arm := 14.0
-	draw_line(Vector2(c.x, c.y - g - arm), Vector2(c.x, c.y + g + arm), glow, 5.5, false)
-	draw_line(Vector2(c.x - g - arm, c.y), Vector2(c.x + g + arm, c.y), glow, 5.5, false)
+	draw_line(Vector2(c.x, c.y - g - arm), Vector2(c.x, c.y - g), glow, 5.5, false)
+	draw_line(Vector2(c.x, c.y + g), Vector2(c.x, c.y + g + arm), glow, 5.5, false)
+	draw_line(Vector2(c.x - g - arm, c.y), Vector2(c.x - g, c.y), glow, 5.5, false)
+	draw_line(Vector2(c.x + g, c.y), Vector2(c.x + g + arm, c.y), glow, 5.5, false)
 	_draw_plus(c, col, 13.0, 1.55, true)
 	var inner := Color(col.r, col.g, col.b, col.a * 0.55)
 	_ring(c, _gap + 3.0, inner, 1.15)
