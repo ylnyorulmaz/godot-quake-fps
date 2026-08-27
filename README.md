@@ -4,6 +4,8 @@ Quake 3 Arena-style movement and a modular weapon manager for **Godot 4.7.2**.
 
 This is original code. It is not affiliated with id Software and does not include Quake assets.
 
+**Product vision** (fantasy races, deathmatch + CTF, FOSS, old PCs, cheap multiplayer server): [PRODUCT.md](PRODUCT.md).
+
 ## Run
 
 1. Install [Godot **4.7.2**](https://godotengine.org/download) (standard build, not an older 4.3/4.4 editor). The project uses the **Compatibility** renderer so it opens on more GPUs.
