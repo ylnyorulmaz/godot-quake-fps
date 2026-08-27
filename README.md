@@ -113,9 +113,10 @@ Item **respawns in 30s**. Three pads are fixed; a fourth wild pad relocates to a
 
 - **Hitscan** (MG / shotgun / rail): `RayCast3D` from the camera, plus spread pellets. Calls `take_damage` on the hit body and spawns a short 3D trail.
 - **Projectile** (rocket): `scenes/rocket.tscn` from **Muzzle**, aimed at the camera ray point. Sphere query splash + `apply_explosion_knockback` (self-damage scaled).
+- **Alt-fire (RMB):** `WeaponManager.alt_fire()`. Shotgun fires **one** tight slug (vs 8-pellet spread). Rocket detonates a **light shove** blast around you (knockback, no damage, skips self). MG / rail have no alt.
 - **Viewmodels** are code-built primitives with 128×128 nearest skins ([`scripts/weapon_skin.gd`](scripts/weapon_skin.gd) / [`scripts/weapon_viewmodel.gd`](scripts/weapon_viewmodel.gd)). No GLB or PNG assets.
 
-Switch with **1–4** or the mouse wheel (`next_weapon` / `prev_weapon`). Fire with **LMB** (`fire`).
+Switch with **1–4** or the mouse wheel (`next_weapon` / `prev_weapon`). Fire with **LMB**; alt-fire with **RMB**.
 
 ## Controls
 
@@ -127,6 +128,7 @@ Switch with **1–4** or the mouse wheel (`next_weapon` / `prev_weapon`). Fire w
 | Sprint | Shift |
 | Crouch | Ctrl or C |
 | Fire | Left mouse |
+| Alt-fire | Right mouse (shotgun slug / rocket shove) |
 | Weapons | 1–4 or wheel |
 | Scoreboard | Tab |
 | Pause | Esc |
