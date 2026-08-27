@@ -17,6 +17,7 @@ const KIND_IDS := {
 }
 
 const ViewGen := preload("res://scripts/weapon_viewmodel.gd")
+const ExplosionHold := preload("res://scripts/explosion.gd")
 
 var current: Kind = Kind.MG
 var state: State = State.IDLE
@@ -39,6 +40,10 @@ var _view_kick := Vector3.ZERO
 const _KIND_ORDER: Array[Kind] = [Kind.MG, Kind.SHOTGUN, Kind.ROCKET, Kind.RAIL]
 const HIT_MASK := 1 | 2 | 4
 const SWITCH_TIME := 0.12
+const ALT_SHOTGUN_PELLETS := 1
+const ALT_SHOTGUN_SPREAD_DEG := 0.9
+const ALT_ROCKET_RADIUS := 4.5
+const ALT_ROCKET_KNOCKBACK := 12.0
 
 
 func _ready() -> void:
@@ -190,6 +195,103 @@ func try_fire() -> bool:
 	return true
 
 
+func alt_fire() -> bool:
+	if state == State.SWITCHING:
+		return false
+	if not _fire_timer.is_stopped():
+		return false
+	match current:
+		Kind.SHOTGUN:
+			return _alt_shotgun()
+		Kind.ROCKET:
+			return _alt_rocket()
+		_:
+			return false
+
+
+func _alt_shotgun() -> bool:
+	if int(ammo.get(Kind.SHOTGUN, 0)) <= 0:
+		cycle(-1)
+		return false
+	var data := _data(Kind.SHOTGUN)
+	state = State.FIRING
+	ammo[Kind.SHOTGUN] = int(ammo.get(Kind.SHOTGUN, 0)) - 1
+	_fire_hitscan(data, _aim(), ALT_SHOTGUN_PELLETS, ALT_SHOTGUN_SPREAD_DEG)
+	_play_fire_sound(data, _aim().origin)
+	_kick()
+	_fire_timer.start(maxf(data.fire_rate, 0.02))
+	_apply_range(data)
+	return true
+
+
+func _alt_rocket() -> bool:
+	if int(ammo.get(Kind.ROCKET, 0)) <= 0:
+		cycle(-1)
+		return false
+	var data := _data(Kind.ROCKET)
+	state = State.FIRING
+	ammo[Kind.ROCKET] = int(ammo.get(Kind.ROCKET, 0)) - 1
+	_push_blast(_blast_origin())
+	_play_fire_sound(data, _blast_origin())
+	_kick()
+	_fire_timer.start(maxf(data.fire_rate, 0.02))
+	return true
+
+
+func _blast_origin() -> Vector3:
+	if owner_body:
+		return owner_body.global_position + Vector3(0.0, 0.45, 0.0)
+	return global_position
+
+
+func _push_blast(at: Vector3) -> void:
+	var host := _fx_host()
+	if host:
+		var fx = ExplosionHold.new()
+		host.add_child(fx)
+		if fx is Node3D:
+			(fx as Node3D).global_position = at
+	if owner_body == null or not owner_body.is_inside_tree():
+		return
+	var world := owner_body.get_world_3d()
+	if world == null:
+		return
+	var space := world.direct_space_state
+	if space == null:
+		return
+	var query := PhysicsShapeQueryParameters3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = ALT_ROCKET_RADIUS
+	query.shape = sphere
+	query.transform = Transform3D(Basis(), at)
+	query.collision_mask = 2 | 4
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	if owner_body is CollisionObject3D:
+		query.exclude = [(owner_body as CollisionObject3D).get_rid()]
+	var results := space.intersect_shape(query, 24)
+	var seen: Array[Object] = []
+	for item in results:
+		var collider: Object = item.get("collider")
+		if collider == null or collider in seen or collider == owner_body:
+			continue
+		seen.append(collider)
+		var body := collider as Node3D
+		if body == null:
+			continue
+		var to_body := body.global_position + Vector3(0.0, 0.45, 0.0) - at
+		var dist := to_body.length()
+		if dist >= ALT_ROCKET_RADIUS:
+			continue
+		var falloff := (ALT_ROCKET_RADIUS - dist) / ALT_ROCKET_RADIUS
+		var dir := Vector3.UP if dist < 0.08 else to_body.normalized()
+		var push := ALT_ROCKET_KNOCKBACK * falloff
+		if collider.has_method("apply_explosion_knockback"):
+			collider.apply_explosion_knockback(dir, push)
+		elif collider.has_method("take_damage"):
+			collider.take_damage(0.0, dir, push, owner_body)
+
+
 func _fire(data: WeaponData) -> void:
 	state = State.FIRING
 	ammo[current] = int(ammo.get(current, 0)) - 1
@@ -219,16 +321,18 @@ func _aim() -> Transform3D:
 	return global_transform
 
 
-func _fire_hitscan(data: WeaponData, aim: Transform3D) -> void:
+func _fire_hitscan(data: WeaponData, aim: Transform3D, pellet_override: int = -1, spread_override: float = -1.0) -> void:
 	if data.pierce:
 		_fire_rail(data, aim)
 		return
-	for i in data.pellet_count:
+	var pellets := data.pellet_count if pellet_override < 0 else pellet_override
+	var spread := data.spread_deg if spread_override < 0.0 else spread_override
+	for i in pellets:
 		var is_center := i == 0
 		var from := aim.origin
 		var dir := -aim.basis.z
-		if not is_center or data.spread_deg > 0.0 and data.pellet_count > 1:
-			dir = _spread_dir(aim, data.spread_deg if not is_center else data.spread_deg * 0.25)
+		if (not is_center) or (spread > 0.0 and pellets > 1):
+			dir = _spread_dir(aim, spread if not is_center else spread * 0.25)
 		var to := from + dir * data.range
 		var hit_pos := to
 		var collider: Object = null
@@ -348,17 +452,24 @@ func _ray_query(from: Vector3, to: Vector3, extra_exclude: Array[RID] = []) -> D
 
 
 func _spawn_trail(from: Vector3, to: Vector3, data: WeaponData) -> void:
+	var host := _fx_host()
+	if host == null:
+		return
 	var fx := HitscanFx.new()
-	_fx_host().add_child(fx)
+	host.add_child(fx)
 	fx.configure(from, to, data.trail_color, data.trail_thickness)
 
 
 func _fx_host() -> Node:
 	if owner_body == null:
 		return self
+	if not owner_body.is_inside_tree():
+		return self
 	var host := owner_body.get_tree().get_first_node_in_group("world_root")
 	if host == null:
 		host = owner_body.get_tree().current_scene
+	if host == null:
+		return self
 	return host
 
 
@@ -369,10 +480,13 @@ func _outgoing_damage(base: float) -> float:
 
 
 func _play_fire_sound(data: WeaponData, at: Vector3) -> void:
+	var fx := get_node_or_null("/root/AudioFx")
+	if fx == null or not fx.has_method("play"):
+		return
 	if is_player:
-		AudioFx.play(data.sound_key)
-	else:
-		AudioFx.play_at(data.sound_key, at)
+		fx.play(data.sound_key)
+	elif fx.has_method("play_at"):
+		fx.play_at(data.sound_key, at)
 
 
 func _kick() -> void:

@@ -263,7 +263,9 @@ func _physics_process(delta: float) -> void:
 	var bob_amt := 0.0 if not is_on_floor() else sin(_bob * 8.0) * 0.025
 	_head.position.y = _eye_height + bob_amt
 
-	if _wants_fire():
+	if Input.is_action_just_pressed("alt_fire"):
+		weapons.alt_fire()
+	elif _wants_fire():
 		weapons.try_fire()
 	_hurt_flash = maxf(_hurt_flash - delta * 2.5, 0.0)
 	_tick_power(delta)

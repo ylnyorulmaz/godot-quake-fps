@@ -144,13 +144,16 @@ func _explode(at: Vector3) -> void:
 		return
 	_alive = false
 	global_position = at
-	AudioFx.play_at("explode", at)
-	var fx := ExplosionFx.new()
+	var sfx := get_node_or_null("/root/AudioFx")
+	if sfx != null and sfx.has_method("play_at"):
+		sfx.play_at("explode", at)
+	var boom := ExplosionFx.new()
 	var host := get_tree().get_first_node_in_group("world_root")
 	if host == null:
 		host = get_parent()
-	host.add_child(fx)
-	fx.global_position = at
+	if host:
+		host.add_child(boom)
+		boom.global_position = at
 
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsShapeQueryParameters3D.new()

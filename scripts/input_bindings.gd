@@ -1,7 +1,7 @@
 extends Node
 
 ## Runtime InputMap so the project runs without editing Project Settings.
-## Actions: move_*, jump, sprint, crouch, fire, next/prev_weapon, weapon_1-4.
+## Actions: move_*, jump, sprint, crouch, fire, alt_fire, next/prev_weapon, weapon_1-4.
 
 
 func _ready() -> void:
@@ -21,6 +21,7 @@ func _ready() -> void:
 	_key("crouch", KEY_C)
 	_mouse("fire", MOUSE_BUTTON_LEFT)
 	_mouse("attack", MOUSE_BUTTON_LEFT)
+	_mouse("alt_fire", MOUSE_BUTTON_RIGHT)
 	_key("weapon_1", KEY_1)
 	_key("weapon_2", KEY_2)
 	_key("weapon_3", KEY_3)

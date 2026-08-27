@@ -115,7 +115,7 @@ func _ready() -> void:
 	_hint.offset_right = 720.0
 	_hint.offset_top = -28.0
 	_hint.offset_bottom = -8.0
-	_hint.text = "WASD  mouse  SPACE jump  SHIFT sprint  CTRL crouch  LMB fire  1-4 / wheel  ESC"
+	_hint.text = "WASD  mouse  SPACE jump  SHIFT sprint  CTRL crouch  LMB fire  RMB alt  1-4 / wheel  ESC"
 
 	_power = _label(26, Color(1.0, 0.45, 0.2), HORIZONTAL_ALIGNMENT_CENTER)
 	_power.name = "PowerUpStatus"
