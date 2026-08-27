@@ -123,11 +123,11 @@ func _test_node_on_meshinstance() -> int:
 	node.kind = Plate.Kind.CEILING
 	mi.add_child(node)
 	if mi.material_override == null:
-		push_error("child ArenaPlateMaterial did not apply on ready")
+		push_error("child ArenaPlateMaterial did not apply when parented")
 		return 1
 	if mi.material_override.texture_filter != StandardMaterial3D.TEXTURE_FILTER_NEAREST:
 		push_error("applied material is not nearest-filtered")
 		return 1
 	mi.queue_free()
-	print("ok   node under MeshInstance3D applies in _ready")
+	print("ok   node under MeshInstance3D applies when parented")
 	return 0

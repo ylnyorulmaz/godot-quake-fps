@@ -29,9 +29,12 @@ const METAL_GREY := Color("#5a5a5a")
 static var _cache: Dictionary = {}
 
 
-func _ready() -> void:
-	if not apply_on_ready:
-		return
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PARENTED and apply_on_ready:
+		_apply_to_parent()
+
+
+func _apply_to_parent() -> void:
 	var parent_mesh := get_parent() as MeshInstance3D
 	if parent_mesh:
 		apply_to(parent_mesh, kind, {
