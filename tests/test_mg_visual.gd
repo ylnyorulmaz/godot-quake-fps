@@ -140,4 +140,8 @@ func _test_fire_pulses() -> int:
 		push_error("tick should rotate the barrel cluster")
 		return 1
 	print("ok   fire pulses flash and spins the barrels")
+	var body := wm.owner_body
+	wm.queue_free()
+	if body:
+		body.queue_free()
 	return 0
