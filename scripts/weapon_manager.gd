@@ -41,6 +41,7 @@ var _use_aim_override := false
 var _view_kick := Vector3.ZERO
 var _mg_spin_vel := 0.0
 var _mg_flash := 0.0
+var _dry_cool := 0.0
 
 const _KIND_ORDER: Array[Kind] = [Kind.MG, Kind.SHOTGUN, Kind.ROCKET, Kind.RAIL]
 const HIT_MASK := 1 | 2 | 4 | 32
@@ -142,6 +143,7 @@ func _process(delta: float) -> void:
 	viewmodel.rotation.x = lerp_angle(viewmodel.rotation.x, 0.0, 1.0 - exp(-10.0 * delta))
 	viewmodel.rotation.z = lerp_angle(viewmodel.rotation.z, 0.0, 1.0 - exp(-12.0 * delta))
 	_view_kick = _view_kick.lerp(Vector3.ZERO, 1.0 - exp(-8.0 * delta))
+	_dry_cool = maxf(_dry_cool - delta, 0.0)
 	_tick_mg(delta)
 
 
@@ -173,6 +175,8 @@ func select(kind: Kind) -> void:
 	_switch_timer.start(SWITCH_TIME)
 	_apply_range(_data(current))
 	_update_viewmodel()
+	if kind != Kind.MG:
+		_stop_mg_loop()
 	weapon_changed.emit(_data(current))
 
 
@@ -203,6 +207,7 @@ func try_fire() -> bool:
 		cycle(-1)
 		return false
 	if int(ammo.get(current, 0)) <= 0:
+		_dry_click()
 		return false
 	_fire(data)
 	return true
@@ -590,6 +595,9 @@ func _play_fire_sound(data: WeaponData, at: Vector3) -> void:
 	var fx := get_node_or_null("/root/AudioFx")
 	if fx == null or not fx.has_method("play"):
 		return
+	if is_player and data.sound_key == "mg":
+		_start_mg_loop()
+		return
 	if is_player:
 		fx.play(data.sound_key)
 	elif fx.has_method("play_at"):
@@ -613,6 +621,8 @@ func _kick() -> void:
 func _pulse_mg() -> void:
 	_mg_spin_vel = maxf(_mg_spin_vel, 26.0)
 	_mg_flash = 1.0
+	if is_player:
+		_start_mg_loop()
 
 
 func _mg_view() -> Node3D:
@@ -634,6 +644,32 @@ func _tick_mg(delta: float) -> void:
 	ViewGen.spin_barrels(gun, _mg_spin_vel * delta)
 	_mg_flash = maxf(_mg_flash - delta * 18.0, 0.0)
 	ViewGen.set_muzzle_flash(gun, _mg_flash)
+	if is_player:
+		if current == Kind.MG and _mg_spin_vel > 3.0:
+			_start_mg_loop()
+		else:
+			_stop_mg_loop()
+
+
+func _start_mg_loop() -> void:
+	var fx := get_node_or_null("/root/AudioFx")
+	if fx != null and fx.has_method("start_loop"):
+		fx.start_loop("mg")
+
+
+func _stop_mg_loop() -> void:
+	var fx := get_node_or_null("/root/AudioFx")
+	if fx != null and fx.has_method("stop_loop"):
+		fx.stop_loop()
+
+
+func _dry_click() -> void:
+	if _dry_cool > 0.0:
+		return
+	_dry_cool = 0.28
+	var fx := get_node_or_null("/root/AudioFx")
+	if fx != null and fx.has_method("play"):
+		fx.play("dry")
 
 
 func _apply_range(data: WeaponData) -> void:

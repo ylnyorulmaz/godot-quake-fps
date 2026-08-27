@@ -705,6 +705,7 @@ func take_damage(amount: float, dir: Vector3, knockback: float, attacker: Node =
 	if dir.length_squared() > 0.0001:
 		velocity += dir.normalized() * knockback
 	_flash_hurt()
+	_play_fx("hurt", global_position)
 
 
 func apply_explosion_knockback(push_direction: Vector3, force: float) -> void:
