@@ -3,6 +3,8 @@ extends CanvasLayer
 
 ## Full-screen HUD. Root Control uses full-rect anchors so it survives resize.
 
+const CrosshairScript := preload("res://scripts/crosshair.gd")
+
 var player: Player
 var _root: Control
 var _health: Label
@@ -56,16 +58,10 @@ func _ready() -> void:
 	_strafe.name = "StrafeHelper"
 	_root.add_child(_strafe)
 
-	_cross = Control.new()
+	_cross = CrosshairScript.new()
 	_cross.name = "Crosshair"
-	_cross.set_anchors_preset(Control.PRESET_CENTER)
-	_cross.offset_left = -12.0
-	_cross.offset_right = 12.0
-	_cross.offset_top = -12.0
-	_cross.offset_bottom = 12.0
-	_cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cross.z_index = 2
 	_root.add_child(_cross)
-	_cross.draw.connect(_draw_cross)
 
 	_speedo = _label(22, Color(1.0, 0.72, 0.18, 0.85), HORIZONTAL_ALIGNMENT_CENTER)
 	_speedo.name = "Speedometer"
@@ -154,6 +150,10 @@ func _ready() -> void:
 func setup(p: Player) -> void:
 	player = p
 	_strafe.player = p
+	if _cross != null:
+		_cross.player = p
+		if _cross.has_method("bind_weapons") and p.weapons != null:
+			_cross.bind_weapons(p.weapons)
 	_bind_health(p)
 
 
@@ -167,14 +167,6 @@ func _label(size: int, color: Color, align: HorizontalAlignment) -> Label:
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(l)
 	return l
-
-
-func _draw_cross() -> void:
-	var c := Color(1.0, 0.42, 0.1, 0.92)
-	_cross.draw_rect(Rect2(11, 0, 2, 7), c)
-	_cross.draw_rect(Rect2(11, 17, 2, 7), c)
-	_cross.draw_rect(Rect2(0, 11, 7, 2), c)
-	_cross.draw_rect(Rect2(17, 11, 7, 2), c)
 
 
 func _bind_health(p: Player) -> void:
@@ -252,7 +244,6 @@ func _process(delta: float) -> void:
 	if _power:
 		_power.text = player.power_status_text()
 		_power.visible = not _power.text.is_empty()
-	_cross.queue_redraw()
 	if _clock:
 		var gs := get_node_or_null("/root/GameState")
 		var clock := ""
@@ -263,6 +254,8 @@ func _process(delta: float) -> void:
 	_scoreboard.visible = Input.is_action_pressed("scoreboard")
 	if _scoreboard.visible:
 		_scoreboard.text = _board_text()
+	if _cross:
+		_cross.visible = player.is_alive() and not _scoreboard.visible
 
 
 func _refresh_score() -> void:

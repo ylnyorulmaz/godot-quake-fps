@@ -166,6 +166,7 @@ func _explode(at: Vector3) -> void:
 	query.collide_with_bodies = true
 	var results := space.intersect_shape(query, 32)
 	var seen: Array[Object] = []
+	var hit_someone := false
 	for item in results:
 		var collider: Object = item.get("collider")
 		if collider == null or collider in seen:
@@ -184,10 +185,26 @@ func _explode(at: Vector3) -> void:
 		var dmg := direct_damage * falloff
 		if body == shooter:
 			dmg *= self_damage_scale
+		elif dmg > 0.0:
+			hit_someone = true
 		if collider.has_method("apply_explosion_knockback"):
 			collider.apply_explosion_knockback(dir, blast_force * falloff)
 			if collider.has_method("take_damage"):
 				collider.take_damage(dmg, dir, 0.0, shooter)
 		elif collider.has_method("take_damage"):
 			collider.take_damage(dmg, dir, knockback * falloff, shooter)
+	if hit_someone:
+		_notify_shooter_hit()
 	queue_free()
+
+
+func _notify_shooter_hit() -> void:
+	if shooter == null or not is_instance_valid(shooter):
+		return
+	var wm: Node = null
+	if "weapons" in shooter:
+		wm = shooter.weapons as Node
+	if wm == null:
+		wm = shooter.find_child("WeaponManager", true, false)
+	if wm != null and wm.has_method("notify_hit"):
+		wm.notify_hit()

@@ -78,6 +78,7 @@ var _shape: CapsuleShape3D
 var _mesh: MeshInstance3D
 var _hurt_flash := 0.0
 var _alive := true
+var _crouching := false
 var _eye_height := 1.55
 var _bob := 0.0
 var _jump_buffer := 0.0
@@ -338,6 +339,7 @@ func _wants_fire() -> bool:
 
 
 func _set_crouch(crouch: bool) -> void:
+	_crouching = crouch
 	var h := CROUCH_HEIGHT if crouch else STAND_HEIGHT
 	if _shape:
 		_shape.height = h
@@ -571,6 +573,10 @@ func air_wish_speed_cap() -> float:
 
 func is_alive() -> bool:
 	return _alive
+
+
+func is_crouching() -> bool:
+	return _crouching
 
 
 func hurt_alpha() -> float:
