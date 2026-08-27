@@ -1,45 +1,46 @@
 extends Object
-## Dark, cold Play-time atmosphere. Applied from Main._ready() so the
-## editor does not need a WorldEnvironment dragged into the scene.
+## Gothic-industrial Play-time atmosphere: dark iron, rust fog, punchy bloom.
+## Applied from Main._ready() so Play needs no editor setup.
 
 static func make_environment() -> Environment:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.05, 0.05, 0.05)
+	env.background_color = Color(0.035, 0.02, 0.016)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.1, 0.12, 0.15)
-	env.ambient_light_energy = 0.28
+	env.ambient_light_color = Color(0.22, 0.1, 0.07)
+	env.ambient_light_energy = 0.26
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	if "tonemap_exposure" in env:
-		env.tonemap_exposure = 0.95
+		env.tonemap_exposure = 1.08
 	env.glow_enabled = true
-	env.glow_intensity = 0.3
+	env.glow_intensity = 0.55
 	if "glow_bloom" in env:
-		env.glow_bloom = 0.12
+		env.glow_bloom = 0.22
 	if "glow_map" in env:
 		var img := Image.create(1, 1, false, Image.FORMAT_RGBA8)
-		img.fill(Color(0.62, 0.78, 1.0))
+		img.fill(Color(1.0, 0.42, 0.12))
 		env.glow_map = ImageTexture.create_from_image(img)
 		if "glow_map_strength" in env:
-			env.glow_map_strength = 0.35
+			env.glow_map_strength = 0.4
 	if "ssao_enabled" in env:
 		env.ssao_enabled = true
 		env.ssao_intensity = 1.5
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.08, 0.12, 0.14)
-	env.fog_density = 0.015
+	env.fog_light_color = Color(0.16, 0.06, 0.035)
+	env.fog_density = 0.012
 	return env
 
 
 static func style_directional_light(light: DirectionalLight3D) -> void:
-	light.light_color = Color(0.55, 0.72, 0.95)
-	light.light_energy = 1.15
-	light.rotation_degrees = Vector3(-18.0, 42.0, 0.0)
+	# Low molten sun: long shadows, local colored lights still read.
+	light.light_color = Color(1.0, 0.48, 0.22)
+	light.light_energy = 0.72
+	light.rotation_degrees = Vector3(-20.0, 48.0, 0.0)
 	light.shadow_enabled = true
 	if "shadow_blur" in light:
-		light.shadow_blur = 1.4
+		light.shadow_blur = 1.2
 	if "shadow_opacity" in light:
-		light.shadow_opacity = 0.72
+		light.shadow_opacity = 0.58
 
 
 static func apply_to(host: Node) -> WorldEnvironment:

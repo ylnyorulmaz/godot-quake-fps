@@ -15,6 +15,7 @@ func _run() -> void:
 	failed += _test_sun_style()
 	failed += _test_applies_to_host()
 	failed += _test_main_ready_creates_it()
+	failed += _test_arena_has_lanterns()
 	if failed > 0:
 		push_error("cinematic atmosphere tests failed: %d" % failed)
 		quit(1)
@@ -28,11 +29,11 @@ func _test_environment_look() -> int:
 	if env.background_mode != Environment.BG_COLOR:
 		push_error("background should be a solid color")
 		return 1
-	if not env.background_color.is_equal_approx(Color(0.05, 0.05, 0.05)):
-		push_error("background should be dark gray, got %s" % env.background_color)
+	if env.background_color.get_luminance() > 0.08:
+		push_error("background should stay near-black, got %s" % env.background_color)
 		return 1
-	if not env.ambient_light_color.is_equal_approx(Color(0.1, 0.12, 0.15)):
-		push_error("ambient should be cold blue, got %s" % env.ambient_light_color)
+	if env.ambient_light_color.r <= env.ambient_light_color.b:
+		push_error("ambient should be warm rust, got %s" % env.ambient_light_color)
 		return 1
 	if env.ambient_light_energy > 0.5:
 		push_error("ambient energy should stay low, got %s" % env.ambient_light_energy)
@@ -40,20 +41,20 @@ func _test_environment_look() -> int:
 	if env.tonemap_mode != Environment.TONE_MAPPER_ACES:
 		push_error("tonemap should be ACES, got %s" % env.tonemap_mode)
 		return 1
-	if not env.glow_enabled or absf(env.glow_intensity - 0.3) > 0.001:
-		push_error("glow should be on at 0.3 intensity")
+	if not env.glow_enabled or env.glow_intensity < 0.4:
+		push_error("bloom should punch through the dark, intensity %s" % env.glow_intensity)
 		return 1
 	if "ssao_enabled" in env and (not env.ssao_enabled or absf(env.ssao_intensity - 1.5) > 0.001):
 		push_error("SSAO should be on at 1.5 intensity")
 		return 1
-	if not env.fog_enabled or absf(env.fog_density - 0.015) > 0.0001:
-		push_error("fog should be on at density 0.015")
+	if not env.fog_enabled or env.fog_density < 0.008:
+		push_error("fog should be on")
 		return 1
 	var fog: Color = env.fog_light_color
-	if fog.b <= fog.r:
-		push_error("fog should read teal/cold, got %s" % fog)
+	if fog.r <= fog.b:
+		push_error("fog should read rust/ember, got %s" % fog)
 		return 1
-	print("ok   environment is dark, ACES, bloom, SSAO, teal fog")
+	print("ok   gothic industrial: dark, ACES, bloom, rust fog")
 	return 0
 
 
@@ -62,8 +63,8 @@ func _test_sun_style() -> int:
 	sun.rotation_degrees = Vector3(-55, 35, 0)
 	sun.light_color = Color(1, 1, 1)
 	Atmosphere.style_directional_light(sun)
-	if sun.light_color.b <= sun.light_color.r:
-		push_error("sun should be cold, got %s" % sun.light_color)
+	if sun.light_color.r <= sun.light_color.b:
+		push_error("sun should be molten/warm, got %s" % sun.light_color)
 		sun.free()
 		return 1
 	if sun.rotation_degrees.x > -12.0 or sun.rotation_degrees.x < -30.0:
@@ -74,7 +75,7 @@ func _test_sun_style() -> int:
 		push_error("sun should cast shadows")
 		sun.free()
 		return 1
-	print("ok   directional light is cold and low-angle")
+	print("ok   directional light is molten and low-angle")
 	sun.free()
 	return 0
 

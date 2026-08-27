@@ -7,14 +7,15 @@ extends Node
 ## deck plates rather than organic terrain. Drop this node under a
 ## MeshInstance3D, or call `apply_to()` / `make_material()` from code.
 ##
-## Palette defaults: #1a1a1a, #3a2a20, #5a5a5a.
+## Palette: soot iron, blood rust, rivet steel.
 
 enum Kind { FLOOR, WALL, CEILING, TRIM }
 
 const SIZE := 256
-const RUST_BLACK := Color("#1a1a1a")
-const RUST_BROWN := Color("#3a2a20")
-const METAL_GREY := Color("#5a5a5a")
+const RUST_BLACK := Color("#100c0a")
+const RUST_BROWN := Color("#6a2410")
+const RUST_ORANGE := Color("#a03812")
+const METAL_GREY := Color("#4a4440")
 
 @export var kind: Kind = Kind.FLOOR
 @export var noise_seed: int = 1337
@@ -89,34 +90,34 @@ static func make_gradient(plate_kind: Kind = Kind.FLOOR) -> Gradient:
 	var g := Gradient.new()
 	match plate_kind:
 		Kind.WALL:
-			g.offsets = PackedFloat32Array([0.0, 0.42, 0.78, 1.0])
+			g.offsets = PackedFloat32Array([0.0, 0.38, 0.72, 1.0])
 			g.colors = PackedColorArray([
 				RUST_BLACK,
-				Color("#2a2420"),
-				METAL_GREY,
-				Color("#6e6a64"),
+				Color("#3a1810"),
+				Color("#5a2a18"),
+				Color("#6a5850"),
 			])
 		Kind.CEILING:
 			g.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
 			g.colors = PackedColorArray([
-				Color("#101010"),
+				Color("#080606"),
 				RUST_BLACK,
-				Color("#3a3836"),
+				Color("#2a2018"),
 			])
 		Kind.TRIM:
 			g.offsets = PackedFloat32Array([0.0, 0.28, 0.62, 1.0])
 			g.colors = PackedColorArray([
 				RUST_BLACK,
 				RUST_BROWN,
-				Color("#4a3828"),
+				RUST_ORANGE,
 				METAL_GREY,
 			])
 		_:
-			g.offsets = PackedFloat32Array([0.0, 0.35, 0.7, 1.0])
+			g.offsets = PackedFloat32Array([0.0, 0.32, 0.62, 1.0])
 			g.colors = PackedColorArray([
 				RUST_BLACK,
 				RUST_BROWN,
-				Color("#4a4038"),
+				RUST_ORANGE,
 				METAL_GREY,
 			])
 	return g

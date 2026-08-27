@@ -136,15 +136,18 @@ func _environment() -> void:
 		we.name = "WorldEnvironment"
 		var env := Environment.new()
 		env.background_mode = Environment.BG_COLOR
-		env.background_color = Color(0.42, 0.48, 0.55)
+		env.background_color = Color(0.035, 0.02, 0.016)
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-		env.ambient_light_color = Color(0.62, 0.58, 0.52)
-		env.ambient_light_energy = 1.15
-		env.fog_enabled = false
-		env.glow_enabled = false
-		env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		env.ambient_light_color = Color(0.22, 0.1, 0.07)
+		env.ambient_light_energy = 0.26
+		env.fog_enabled = true
+		env.fog_light_color = Color(0.16, 0.06, 0.035)
+		env.fog_density = 0.012
+		env.glow_enabled = true
+		env.glow_intensity = 0.55
+		env.tonemap_mode = Environment.TONE_MAPPER_ACES
 		if "tonemap_exposure" in env:
-			env.tonemap_exposure = 1.2
+			env.tonemap_exposure = 1.08
 		we.environment = env
 		add_child(we)
 
@@ -152,11 +155,10 @@ func _environment() -> void:
 		return
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.rotation_degrees = Vector3(-55, 35, 0)
-	sun.light_color = Color(1.0, 0.94, 0.84)
-	sun.light_energy = 1.7
-	# A closed ceiling + directional shadows blacked out the whole floor.
-	sun.shadow_enabled = false
+	sun.rotation_degrees = Vector3(-20, 48, 0)
+	sun.light_color = Color(1.0, 0.48, 0.22)
+	sun.light_energy = 0.72
+	sun.shadow_enabled = true
 	add_child(sun)
 
 
@@ -192,9 +194,9 @@ func _ramps() -> void:
 	var z0 := -32.0
 	var spacing := RAMP_WIDTH + 2.0
 	var colors := [
-		Color(0.22, 0.55, 0.28),
-		Color(0.75, 0.55, 0.12),
-		Color(0.78, 0.22, 0.14),
+		Color(0.12, 0.72, 0.22),
+		Color(0.95, 0.45, 0.06),
+		Color(0.85, 0.06, 0.05),
 	]
 	for i in RAMP_ANGLES.size():
 		var angle: float = RAMP_ANGLES[i]
@@ -215,21 +217,21 @@ func _gap_course() -> void:
 	var x := -30.0
 	var z := 6.0
 	var plat_len := PLATFORM_SIZE.z
-	var mat := _grid_mat(Color(0.18, 0.32, 0.62), Color(0.28, 0.48, 0.85))
+	var mat := _grid_mat(Color(0.12, 0.14, 0.18), Color(0.22, 0.38, 0.48))
 	_csg_box(Vector3(x, PLATFORM_HEIGHT - PLATFORM_SIZE.y * 0.5, z), PLATFORM_SIZE, mat)
 	for gap in GAP_WIDTHS:
 		z += plat_len * 0.5 + gap + plat_len * 0.5
 		_csg_box(Vector3(x, PLATFORM_HEIGHT - PLATFORM_SIZE.y * 0.5, z), PLATFORM_SIZE, mat)
 	# Staircase onto the first platform so you do not need a pad to start.
-	_ramp_polygon(Vector3(x - PLATFORM_SIZE.x * 0.5 - 10.0, 0.0, 6.0), 10.0, rad_to_deg(atan(PLATFORM_HEIGHT / 10.0)), PLATFORM_SIZE.x, 0.0, Color(0.2, 0.36, 0.7))
+	_ramp_polygon(Vector3(x - PLATFORM_SIZE.x * 0.5 - 10.0, 0.0, 6.0), 10.0, rad_to_deg(atan(PLATFORM_HEIGHT / 10.0)), PLATFORM_SIZE.x, 0.0, Color(0.55, 0.18, 0.08))
 
 
 func _hallway() -> void:
 	## Narrow enclosed corridor along +X. Sprint / bhop through it to judge
 	## speed perception and the player's dynamic FOV ceiling.
-	var wall_mat := _grid_mat(Color(0.45, 0.16, 0.12), Color(0.62, 0.22, 0.16))
-	var ceil_mat := _grid_mat(Color(0.12, 0.12, 0.14), Color(0.2, 0.2, 0.22))
-	var floor_mat := _grid_mat(Color(0.55, 0.5, 0.18), Color(0.75, 0.68, 0.22))
+	var wall_mat := _grid_mat(Color(0.55, 0.08, 0.06), Color(0.78, 0.16, 0.08))
+	var ceil_mat := _grid_mat(Color(0.08, 0.06, 0.05), Color(0.16, 0.12, 0.1))
+	var floor_mat := _grid_mat(Color(0.72, 0.42, 0.08), Color(0.95, 0.62, 0.12))
 	var z := 36.0
 	var x_mid := 0.0
 	var half_w := HALLWAY_WIDTH * 0.5
@@ -261,7 +263,7 @@ func _hallway() -> void:
 
 
 func _cover() -> void:
-	var crate := _grid_mat(Color(0.4, 0.28, 0.12), Color(0.55, 0.38, 0.16))
+	var crate := _grid_mat(Color(0.28, 0.12, 0.06), Color(0.5, 0.22, 0.08))
 	for p in [Vector3(18, 1.0, 12), Vector3(-12, 1.0, -8), Vector3(22, 1.0, -18), Vector3(-22, 1.0, 18)]:
 		_csg_box(p, Vector3(2.4, 2.0, 2.4), crate)
 
@@ -369,17 +371,73 @@ func _nav_points() -> void:
 
 
 func _lights() -> void:
-	for p in [
-		Vector3(0, 10, 0), Vector3(24, 8, 24), Vector3(-24, 8, 24),
-		Vector3(24, 8, -24), Vector3(-24, 8, -24), Vector3(0, 5, 36),
-		Vector3(16, 8, -20), Vector3(-30, 8, 16),
-	]:
-		var light := OmniLight3D.new()
-		light.position = p
-		light.light_color = Color(1.0, 0.9, 0.75)
-		light.light_energy = 4.5
-		light.omni_range = 32.0
-		add_child(light)
+	_hearth()
+	# Q1-style colored pools: lava, blood, slime, cyan — vivid against dark iron.
+	_lantern(Vector3(0, 9.5, 0), Color(1.0, 0.38, 0.08), 6.5, 28.0)
+	_lantern(Vector3(24, 7.5, 24), Color(1.0, 0.12, 0.06), 5.5, 26.0)
+	_lantern(Vector3(-24, 7.5, 24), Color(0.15, 0.95, 0.35), 5.2, 26.0)
+	_lantern(Vector3(24, 7.5, -24), Color(0.2, 0.75, 1.0), 5.2, 26.0)
+	_lantern(Vector3(-24, 7.5, -24), Color(1.0, 0.45, 0.08), 5.5, 26.0)
+	_lantern(Vector3(0, 4.6, 36), Color(1.0, 0.55, 0.12), 4.8, 22.0)
+	_lantern(Vector3(16, 7.5, -20), Color(0.95, 0.2, 0.08), 4.6, 20.0)
+	_lantern(Vector3(-30, 7.5, 16), Color(0.25, 0.85, 0.95), 4.6, 20.0)
+
+
+func _hearth() -> void:
+	var plate := MeshInstance3D.new()
+	plate.name = "Hearth"
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 3.4
+	mesh.bottom_radius = 3.4
+	mesh.height = 0.08
+	mesh.radial_segments = 12
+	plate.mesh = mesh
+	plate.position = Vector3(0.0, 0.05, 0.0)
+	plate.material_override = _emit_mat(Color(1.0, 0.28, 0.05), 3.8)
+	plate.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(plate)
+
+
+func _lantern(pos: Vector3, color: Color, energy: float, omni_range: float) -> void:
+	var cage := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(0.42, 0.62, 0.42)
+	cage.mesh = box
+	cage.position = pos
+	var iron := StandardMaterial3D.new()
+	iron.albedo_color = Color(0.1, 0.07, 0.05)
+	iron.metallic = 0.82
+	iron.roughness = 0.32
+	cage.material_override = iron
+	add_child(cage)
+	var core := MeshInstance3D.new()
+	var ball := SphereMesh.new()
+	ball.radius = 0.15
+	ball.height = 0.3
+	ball.radial_segments = 10
+	ball.rings = 6
+	core.mesh = ball
+	core.position = pos
+	core.material_override = _emit_mat(color, 5.2)
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(core)
+	var light := OmniLight3D.new()
+	light.position = pos
+	light.light_color = color
+	light.light_energy = energy
+	light.omni_range = omni_range
+	light.shadow_enabled = false
+	add_child(light)
+
+
+func _emit_mat(color: Color, energy: float) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = energy
+	mat.roughness = 0.35
+	return mat
 
 
 func _labels() -> void:
@@ -395,7 +453,7 @@ func _billboard(pos: Vector3, text: String) -> void:
 	lab.text = text
 	lab.position = pos
 	lab.font_size = 64
-	lab.modulate = Color(1.0, 0.92, 0.45)
+	lab.modulate = Color(1.0, 0.45, 0.12)
 	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	lab.outline_size = 8
 	lab.outline_modulate = Color(0, 0, 0, 0.85)
@@ -433,28 +491,28 @@ func _csg_box(center: Vector3, size: Vector3, mat: Material) -> CSGBox3D:
 
 
 func _mat_floor() -> StandardMaterial3D:
-	return _lit_plate(ArenaPlateMaterial.Kind.FLOOR, Color(1.45, 1.32, 1.18))
+	return _lit_plate(ArenaPlateMaterial.Kind.FLOOR, Color(0.95, 0.58, 0.38))
 
 
 func _mat_wall() -> StandardMaterial3D:
-	return _lit_plate(ArenaPlateMaterial.Kind.WALL, Color(1.38, 1.28, 1.16))
+	return _lit_plate(ArenaPlateMaterial.Kind.WALL, Color(0.72, 0.38, 0.28))
 
 
 func _mat_ceiling() -> StandardMaterial3D:
-	return _lit_plate(ArenaPlateMaterial.Kind.CEILING, Color(1.25, 1.22, 1.2))
+	return _lit_plate(ArenaPlateMaterial.Kind.CEILING, Color(0.32, 0.24, 0.2))
 
 
 func _grid_mat(a: Color, b: Color) -> StandardMaterial3D:
 	var mat := ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.TRIM)
-	mat.albedo_color = a.lerp(b, 0.45).lightened(0.12)
-	mat.metallic = 0.22
-	mat.roughness = 0.58
+	mat.albedo_color = a.lerp(b, 0.4)
+	mat.metallic = 0.42
+	mat.roughness = 0.45
 	return mat
 
 
 func _lit_plate(kind: ArenaPlateMaterial.Kind, albedo: Color) -> StandardMaterial3D:
 	var mat := ArenaPlateMaterial.make_material(kind)
 	mat.albedo_color = albedo
-	mat.metallic = 0.22
-	mat.roughness = 0.58
+	mat.metallic = 0.5
+	mat.roughness = 0.4
 	return mat

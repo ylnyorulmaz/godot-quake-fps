@@ -11,6 +11,7 @@ func _init() -> void:
 	failed += _test_metal_rough()
 	failed += _test_cellular_not_flat()
 	failed += _test_palette_is_dark_metal()
+	failed += _test_palette_is_warm_rust()
 	failed += _test_normal_map()
 	failed += _test_apply_to_mesh()
 	failed += _test_node_on_meshinstance()
@@ -86,6 +87,25 @@ func _test_palette_is_dark_metal() -> int:
 		push_error("palette too black, avg lum %s" % avg)
 		return 1
 	print("ok   rust/metal luminance %.2f" % avg)
+	return 0
+
+
+func _test_palette_is_warm_rust() -> int:
+	var mat: StandardMaterial3D = Plate.make_material(Plate.Kind.FLOOR)
+	var img := (mat.albedo_texture as ImageTexture).get_image()
+	var r_acc := 0.0
+	var b_acc := 0.0
+	var n := 0
+	for y in range(0, 256, 16):
+		for x in range(0, 256, 16):
+			var p := img.get_pixel(x, y)
+			r_acc += p.r
+			b_acc += p.b
+			n += 1
+	if r_acc / float(n) <= b_acc / float(n):
+		push_error("floor plates should read rust-warm, r %s b %s" % [r_acc / float(n), b_acc / float(n)])
+		return 1
+	print("ok   floor plates are rust-warm")
 	return 0
 
 
