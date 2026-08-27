@@ -5,6 +5,8 @@ extends Node3D
 ## Hitscan uses FireRay (RayCast3D). Projectiles spawn at Muzzle.
 
 signal weapon_changed(data: WeaponData)
+signal fired
+signal hit_landed
 
 enum Kind { MG, SHOTGUN, ROCKET, RAIL }
 enum State { IDLE, FIRING, SWITCHING }
@@ -233,6 +235,7 @@ func _alt_shotgun() -> bool:
 	_kick()
 	_fire_timer.start(maxf(data.fire_rate, 0.02))
 	_apply_range(data)
+	notify_fired()
 	return true
 
 
@@ -247,6 +250,7 @@ func _alt_mg() -> bool:
 	_kick()
 	_fire_timer.start(maxf(data.fire_rate, 0.02))
 	_apply_range(data)
+	notify_fired()
 	return true
 
 
@@ -266,6 +270,7 @@ func _alt_rail() -> bool:
 	_kick()
 	_fire_timer.start(maxf(data.fire_rate * 1.25, 0.02))
 	_apply_range(data)
+	notify_fired()
 	return true
 
 
@@ -280,6 +285,7 @@ func _alt_rocket() -> bool:
 	_play_fire_sound(data, _blast_origin())
 	_kick()
 	_fire_timer.start(maxf(data.fire_rate, 0.02))
+	notify_fired()
 	return true
 
 
@@ -316,6 +322,7 @@ func _push_blast(at: Vector3) -> void:
 		query.exclude = [(owner_body as CollisionObject3D).get_rid()]
 	var results := space.intersect_shape(query, 24)
 	var seen: Array[Object] = []
+	var shoved := false
 	for item in results:
 		var collider: Object = item.get("collider")
 		if collider == null or collider in seen or collider == owner_body:
@@ -331,10 +338,13 @@ func _push_blast(at: Vector3) -> void:
 		var falloff := (ALT_ROCKET_RADIUS - dist) / ALT_ROCKET_RADIUS
 		var dir := Vector3.UP if dist < 0.08 else to_body.normalized()
 		var push := ALT_ROCKET_KNOCKBACK * falloff
+		shoved = true
 		if collider.has_method("apply_explosion_knockback"):
 			collider.apply_explosion_knockback(dir, push)
 		elif collider.has_method("take_damage"):
 			collider.take_damage(0.0, dir, push, owner_body)
+	if shoved:
+		notify_hit()
 
 
 func _fire(data: WeaponData) -> void:
@@ -353,6 +363,15 @@ func _fire(data: WeaponData) -> void:
 	_kick()
 	_fire_timer.start(maxf(data.fire_rate, 0.02))
 	_apply_range(data)
+	notify_fired()
+
+
+func notify_fired() -> void:
+	fired.emit()
+
+
+func notify_hit() -> void:
+	hit_landed.emit()
 
 
 func _on_fire_timer() -> void:
@@ -376,6 +395,7 @@ func _fire_hitscan(data: WeaponData, aim: Transform3D, pellet_override: int = -1
 		return
 	var pellets := data.pellet_count if pellet_override < 0 else pellet_override
 	var spread := data.spread_deg if spread_override < 0.0 else spread_override
+	var landed := false
 	for i in pellets:
 		var is_center := i == 0
 		var from := aim.origin
@@ -398,8 +418,12 @@ func _fire_hitscan(data: WeaponData, aim: Transform3D, pellet_override: int = -1
 				collider = result.collider
 		if collider != null and collider.has_method("take_damage"):
 			collider.take_damage(_outgoing_damage(data.damage), dir, data.knockback, owner_body)
+			if collider != owner_body:
+				landed = true
 		if is_player or is_center:
 			_spawn_trail(from, hit_pos, data)
+	if landed:
+		notify_hit()
 
 
 func _fire_rail(data: WeaponData, aim: Transform3D) -> void:
@@ -407,6 +431,7 @@ func _fire_rail(data: WeaponData, aim: Transform3D) -> void:
 	var from := aim.origin
 	var end := from + dir * data.range
 	var exclude: Array[RID] = []
+	var landed := false
 	if owner_body:
 		exclude.append(owner_body.get_rid())
 	if is_player and _ray != null:
@@ -416,12 +441,16 @@ func _fire_rail(data: WeaponData, aim: Transform3D) -> void:
 			var first := _ray.get_collider()
 			if first != null and first.has_method("take_damage"):
 				first.take_damage(_outgoing_damage(data.damage), dir, data.knockback, owner_body)
+				if first != owner_body:
+					landed = true
 				if first is CollisionObject3D:
 					exclude.append((first as CollisionObject3D).get_rid())
 				from = _ray.get_collision_point() + dir * 0.05
 			else:
 				end = _ray.get_collision_point()
 				_spawn_trail(aim.origin, end, data)
+				if landed:
+					notify_hit()
 				return
 	for _i in 8:
 		var result := _ray_query(from, from + dir * data.range, exclude)
@@ -432,12 +461,16 @@ func _fire_rail(data: WeaponData, aim: Transform3D) -> void:
 		var collider: Object = result.collider
 		if collider != null and collider.has_method("take_damage"):
 			collider.take_damage(_outgoing_damage(data.damage), dir, data.knockback, owner_body)
+			if collider != owner_body:
+				landed = true
 			if collider is CollisionObject3D:
 				exclude.append((collider as CollisionObject3D).get_rid())
 			from = result.position + dir * 0.05
 		else:
 			break
 	_spawn_trail(aim.origin, end, data)
+	if landed:
+		notify_hit()
 
 
 func _fire_projectile(data: WeaponData, aim: Transform3D) -> void:
