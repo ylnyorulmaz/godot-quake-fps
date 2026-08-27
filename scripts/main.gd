@@ -14,6 +14,10 @@ const BOT_MODELS := [
 	"res://assets/Warrior2.glb",
 	"res://assets/female.glb",
 ]
+## Grunt charges, Ranger camps, Visl panics.
+const BOT_PERSONALITIES := [0, 2, 4]
+
+var _diff_btn: Button
 
 
 func _ready() -> void:
@@ -69,8 +73,8 @@ func _build_menu() -> void:
 
 	var col := VBoxContainer.new()
 	col.set_anchors_preset(Control.PRESET_CENTER)
-	col.position = Vector2(-220, -140)
-	col.custom_minimum_size = Vector2(440, 280)
+	col.position = Vector2(-220, -180)
+	col.custom_minimum_size = Vector2(440, 340)
 	col.add_theme_constant_override("separation", 16)
 	_menu.add_child(col)
 
@@ -89,6 +93,8 @@ func _build_menu() -> void:
 	col.add_child(sub)
 
 	col.add_child(_btn("PLAY", _start_match))
+	_diff_btn = _btn(_difficulty_label(), _cycle_difficulty)
+	col.add_child(_diff_btn)
 	col.add_child(_btn("QUIT", func() -> void: get_tree().quit()))
 
 
@@ -118,6 +124,37 @@ func _btn(text: String, cb: Callable) -> Button:
 	b.custom_minimum_size = Vector2(0, 48)
 	b.pressed.connect(cb)
 	return b
+
+
+func _difficulty_multiplier() -> float:
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null:
+		return 1.0
+	return float(gm.get("difficulty_multiplier"))
+
+
+func _difficulty_label() -> String:
+	var mul := _difficulty_multiplier()
+	if mul <= 0.6:
+		return "HANDICAP  ·  EASY  0.5"
+	if mul >= 1.4:
+		return "HANDICAP  ·  HARD  1.5"
+	return "HANDICAP  ·  NORMAL  1.0"
+
+
+func _cycle_difficulty() -> void:
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	var mul := float(gm.get("difficulty_multiplier"))
+	if mul <= 0.6:
+		gm.set("difficulty_multiplier", 1.0)
+	elif mul < 1.4:
+		gm.set("difficulty_multiplier", 1.5)
+	else:
+		gm.set("difficulty_multiplier", 0.5)
+	if _diff_btn:
+		_diff_btn.text = _difficulty_label()
 
 
 func _start_match() -> void:
@@ -155,6 +192,7 @@ func _start_match() -> void:
 		bot.bot_name = BOT_NAMES[i]
 		bot.color = BOT_COLORS[i]
 		bot.model_path = BOT_MODELS[i]
+		bot.personality = BOT_PERSONALITIES[i]
 		bot.name = BOT_NAMES[i]
 		bot.player_path = NodePath("../Player")
 		bot.process_mode = Node.PROCESS_MODE_PAUSABLE

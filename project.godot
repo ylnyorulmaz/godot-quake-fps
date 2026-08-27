@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 InputBindings="*res://scripts/input_bindings.gd"
 GameState="*res://scripts/game_state.gd"
 AudioFx="*res://scripts/audio_fx.gd"
+GameManager="*res://scripts/game_manager.gd"
 
 [display]
 

@@ -33,6 +33,10 @@ signal died(killer: Node)
 @export var strafe_speed: float = 7.0
 @export var ideal_range: float = 12.0
 
+@export_category("Personality")
+## 0 Aggressive, 1 Defensive, 2 Sniper, 3 Normal, 4 Crazy
+@export_enum("Agresif", "Savunmacı", "Sniper", "Normal", "Crazy") var personality: int = 3
+
 @export_category("Combat")
 @export var attack_cooldown: float = 0.6
 @export var vision_range: float = 32.0
@@ -49,6 +53,12 @@ signal died(killer: Node)
 const EYE_HEIGHT := 1.5
 const CHEST_HEIGHT := 1.15
 const DEFAULT_SNAP := 0.12
+
+const PERSONALITY_AGGRESSIVE := 0
+const PERSONALITY_DEFENSIVE := 1
+const PERSONALITY_SNIPER := 2
+const PERSONALITY_NORMAL := 3
+const PERSONALITY_CRAZY := 4
 
 var health_comp: HealthComponent
 
@@ -78,6 +88,12 @@ var _wander_target := Vector3.ZERO
 var _path_refresh := 0.0
 var _retarget := 0.0
 var _visual_base_rot := Vector3.ZERO
+var _base_health := 100.0
+var _base_damage := 7.0
+var _scaled_damage := 7.0
+var _crazy_swap := 0.0
+var _crazy_mode := 0
+var _crazy_dir := Vector3.FORWARD
 
 
 func _ready() -> void:
@@ -96,6 +112,8 @@ func _ready() -> void:
 	_configure_timer()
 	if health_comp and not health_comp.died.is_connected(_on_vitals_died):
 		health_comp.died.connect(_on_vitals_died)
+	_capture_base_stats()
+	_apply_difficulty()
 	var gs := get_node_or_null("/root/GameState")
 	if gs != null and gs.has_method("register_bot"):
 		gs.register_bot(bot_name)
@@ -256,6 +274,7 @@ func _physics_process(delta: float) -> void:
 	if _strafe_swap <= 0.0:
 		_strafe_sign *= -1.0
 		_strafe_swap = randf_range(0.55, 1.25)
+	_tick_crazy(delta)
 
 	var player := _resolve_player()
 	_retarget -= delta
@@ -267,7 +286,7 @@ func _physics_process(delta: float) -> void:
 	_update_los(_target)
 	_update_nav_target(_target, delta)
 
-	var desired := _desired_horizontal(_target)
+	var desired := _movement_for_personality(_target)
 	_look_toward(desired, _target, delta)
 
 	if not is_on_floor():
@@ -316,6 +335,74 @@ func _update_walk_bob(delta: float) -> void:
 		_visual.rotation.z = lerp_angle(_visual.rotation.z, _visual_base_rot.z, 1.0 - exp(-10.0 * dt))
 
 
+func _movement_for_personality(target: Node3D) -> Vector3:
+	match personality:
+		PERSONALITY_AGGRESSIVE:
+			return _move_aggressive(target)
+		PERSONALITY_DEFENSIVE:
+			return _move_defensive(target)
+		PERSONALITY_SNIPER:
+			return _move_sniper(target)
+		PERSONALITY_CRAZY:
+			return _move_crazy(target)
+		_:
+			return _move_normal(target)
+
+
+func _move_aggressive(target: Node3D) -> Vector3:
+	if target == null:
+		return _path_velocity()
+	var to_target := target.global_position - global_position
+	to_target.y = 0.0
+	if to_target.length_squared() < 0.04:
+		return Vector3.ZERO
+	return to_target.normalized() * movement_speed
+
+
+func _move_defensive(target: Node3D) -> Vector3:
+	if target == null:
+		return _path_velocity()
+	var away := global_position - target.global_position
+	away.y = 0.0
+	if away.length_squared() < 0.0001:
+		away = Vector3.RIGHT
+	return away.normalized() * movement_speed
+
+
+func _move_sniper(_target: Node3D) -> Vector3:
+	return Vector3.ZERO
+
+
+func _move_normal(target: Node3D) -> Vector3:
+	return _desired_horizontal(target)
+
+
+func _move_crazy(target: Node3D) -> Vector3:
+	match _crazy_mode:
+		0:
+			return _move_aggressive(target)
+		1:
+			if target != null:
+				return _strafe_velocity(target)
+			return _path_velocity()
+		_:
+			var wish := _crazy_dir * movement_speed
+			wish.y = 0.0
+			return wish
+
+
+func _tick_crazy(delta: float) -> void:
+	if personality != PERSONALITY_CRAZY:
+		return
+	_crazy_swap -= delta
+	if _crazy_swap > 0.0:
+		return
+	_crazy_mode = randi() % 3
+	var angle := randf() * TAU
+	_crazy_dir = Vector3(cos(angle), 0.0, sin(angle))
+	_crazy_swap = randf_range(0.25, 0.7)
+
+
 func _desired_horizontal(target: Node3D) -> Vector3:
 	# Aggro: break off the path and strafe while shooting.
 	if _has_los and target != null:
@@ -360,7 +447,11 @@ func _strafe_velocity(target: Node3D) -> Vector3:
 func _update_nav_target(target: Node3D, delta: float) -> void:
 	_path_refresh -= delta
 	var dest := Vector3.ZERO
-	if target != null:
+	if personality == PERSONALITY_SNIPER:
+		dest = global_position
+	elif personality == PERSONALITY_DEFENSIVE and target != null:
+		dest = _flee_point(target)
+	elif target != null:
 		dest = target.global_position
 	else:
 		dest = _wander_point()
@@ -368,6 +459,30 @@ func _update_nav_target(target: Node3D, delta: float) -> void:
 	if _path_refresh <= 0.0 or global_position.distance_to(dest) < 0.5:
 		_agent.set_target_position(dest)
 		_path_refresh = 0.15
+
+
+func _flee_point(target: Node3D) -> Vector3:
+	var away := global_position - target.global_position
+	away.y = 0.0
+	if away.length_squared() < 0.01:
+		away = Vector3(1.0, 0.0, 0.0)
+	else:
+		away = away.normalized()
+	var fallback := global_position + away * 16.0
+	if not is_inside_tree():
+		return fallback
+	var spots := get_tree().get_nodes_in_group("nav_points")
+	if spots.is_empty():
+		return fallback
+	var best := fallback
+	var best_d := -1.0
+	for s in spots:
+		var p: Vector3 = (s as Node3D).global_position
+		var d := p.distance_squared_to(target.global_position)
+		if d > best_d:
+			best_d = d
+			best = p
+	return best
 
 
 func _wander_point() -> Vector3:
@@ -526,7 +641,7 @@ func _fire_hitscan(target: Node3D) -> void:
 			var kb := dir
 			if hit.has("normal"):
 				kb = -hit.normal
-			collider.take_damage(attack_damage, kb, attack_knockback, self)
+			collider.take_damage(scaled_attack_damage(), kb, attack_knockback, self)
 	_spawn_tracer(from, impact)
 	_play_fx("mg", global_position)
 
@@ -632,6 +747,7 @@ func respawn_at(pos: Vector3) -> void:
 	collision_layer = 4
 	_has_los = false
 	_wander_target = Vector3.ZERO
+	_apply_difficulty()
 	if health_comp:
 		health_comp.reset_to_spawn()
 		if health_comp.current_armor <= 0.0:
@@ -648,6 +764,34 @@ func respawn_at(pos: Vector3) -> void:
 
 func is_alive() -> bool:
 	return _alive
+
+
+func scaled_attack_damage() -> float:
+	return _scaled_damage
+
+
+func _capture_base_stats() -> void:
+	if health_comp:
+		_base_health = health_comp.max_health
+	_base_damage = attack_damage
+
+
+func _apply_difficulty() -> void:
+	var mul := _difficulty_multiplier()
+	if health_comp:
+		health_comp.max_health = maxf(1.0, _base_health * mul)
+		health_comp.current_health = health_comp.max_health
+	_scaled_damage = _base_damage * mul
+
+
+func _difficulty_multiplier() -> float:
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null:
+		return 1.0
+	var value = gm.get("difficulty_multiplier")
+	if typeof(value) != TYPE_FLOAT and typeof(value) != TYPE_INT:
+		return 1.0
+	return maxf(0.0, float(value))
 
 
 func _flash_hurt() -> void:

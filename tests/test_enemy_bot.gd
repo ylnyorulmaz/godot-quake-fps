@@ -14,6 +14,8 @@ func _run() -> void:
 	failed += _test_spread_misses()
 	failed += _test_collects_other_bots()
 	failed += _test_walk_stride_visible()
+	failed += _test_personality_moves()
+	failed += _test_difficulty_scales_vitals()
 	if failed > 0:
 		push_error("enemy bot tests failed: %d" % failed)
 		quit(1)
@@ -106,4 +108,82 @@ func _test_walk_stride_visible() -> int:
 		return 1
 	print("ok   walk stride bob height %.2f roll %.2f" % [max_y, max_roll])
 	bot.queue_free()
+	return 0
+
+
+func _dummy_foe(pos: Vector3) -> Node3D:
+	var foe := Node3D.new()
+	foe.name = "Foe"
+	root.add_child(foe)
+	foe.global_position = pos
+	return foe
+
+
+func _test_personality_moves() -> int:
+	var bot = _make_bot("Grunt", Vector3.ZERO)
+	if bot == null:
+		push_error("EnemyBot failed to instantiate")
+		return 1
+	var foe := _dummy_foe(Vector3(10, 0, 0))
+	bot.personality = Bot.PERSONALITY_AGGRESSIVE
+	var rush: Vector3 = bot._move_aggressive(foe)
+	if rush.x <= 0.0:
+		push_error("aggressive should walk toward +X foe, got %s" % rush)
+		return 1
+	var dispatched: Vector3 = bot._movement_for_personality(foe)
+	if dispatched.x <= 0.0:
+		push_error("personality dispatch did not charge, got %s" % dispatched)
+		return 1
+	bot.personality = Bot.PERSONALITY_DEFENSIVE
+	var kite: Vector3 = bot._move_defensive(foe)
+	if kite.x >= 0.0:
+		push_error("defensive should walk away from +X foe, got %s" % kite)
+		return 1
+	bot.personality = Bot.PERSONALITY_SNIPER
+	var hold: Vector3 = bot._move_sniper(foe)
+	if hold.length_squared() > 0.0001:
+		push_error("sniper should stand still, got %s" % hold)
+		return 1
+	var sniper_disp: Vector3 = bot._movement_for_personality(foe)
+	if sniper_disp.length_squared() > 0.0001:
+		push_error("sniper dispatch should be zero, got %s" % sniper_disp)
+		return 1
+	print("ok   personality toward / away / stand still")
+	foe.queue_free()
+	bot.queue_free()
+	return 0
+
+
+func _test_difficulty_scales_vitals() -> int:
+	var existing := root.get_node_or_null("GameManager")
+	var gm = existing
+	var spawned := false
+	if gm == null:
+		var gm_script: Script = load("res://scripts/game_manager.gd")
+		gm = gm_script.new()
+		gm.name = "GameManager"
+		root.add_child(gm)
+		spawned = true
+	var previous: float = float(gm.get("difficulty_multiplier"))
+	gm.set("difficulty_multiplier", 0.5)
+	var bot = _make_bot("Ranger", Vector3.ZERO)
+	if bot == null:
+		push_error("EnemyBot failed to instantiate")
+		gm.set("difficulty_multiplier", previous)
+		if spawned:
+			gm.queue_free()
+		return 1
+	var hp: float = bot.health_comp.max_health
+	var dmg: float = bot.scaled_attack_damage()
+	gm.set("difficulty_multiplier", previous)
+	if spawned:
+		gm.queue_free()
+	bot.queue_free()
+	if absf(hp - 50.0) > 0.01:
+		push_error("0.5 difficulty should set bot HP to 50, got %s" % hp)
+		return 1
+	if absf(dmg - 3.5) > 0.01:
+		push_error("0.5 difficulty should set bot damage to 3.5, got %s" % dmg)
+		return 1
+	print("ok   difficulty 0.5 halves bot health and damage")
 	return 0
