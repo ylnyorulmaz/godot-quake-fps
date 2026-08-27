@@ -17,7 +17,9 @@ const BOT_MODELS := [
 ## Grunt charges, Ranger camps, Visl panics.
 const BOT_PERSONALITIES := [0, 2, 4]
 
-var _diff_btn: Button
+var _diff_easy: Button
+var _diff_normal: Button
+var _diff_hard: Button
 
 
 func _ready() -> void:
@@ -73,9 +75,9 @@ func _build_menu() -> void:
 
 	var col := VBoxContainer.new()
 	col.set_anchors_preset(Control.PRESET_CENTER)
-	col.position = Vector2(-220, -180)
-	col.custom_minimum_size = Vector2(440, 340)
-	col.add_theme_constant_override("separation", 16)
+	col.position = Vector2(-240, -220)
+	col.custom_minimum_size = Vector2(480, 420)
+	col.add_theme_constant_override("separation", 14)
 	_menu.add_child(col)
 
 	var title := Label.new()
@@ -93,8 +95,7 @@ func _build_menu() -> void:
 	col.add_child(sub)
 
 	col.add_child(_btn("PLAY", _start_match))
-	_diff_btn = _btn(_difficulty_label(), _cycle_difficulty)
-	col.add_child(_diff_btn)
+	col.add_child(_build_difficulty_picker())
 	col.add_child(_btn("QUIT", func() -> void: get_tree().quit()))
 
 
@@ -126,6 +127,34 @@ func _btn(text: String, cb: Callable) -> Button:
 	return b
 
 
+func _build_difficulty_picker() -> Control:
+	var wrap := VBoxContainer.new()
+	wrap.add_theme_constant_override("separation", 6)
+	var title := Label.new()
+	title.text = "DIFFICULTY"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(0.85, 0.72, 0.5))
+	wrap.add_child(title)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	_diff_easy = _btn("EASY", func() -> void: _set_difficulty(0.5))
+	_diff_normal = _btn("NORMAL", func() -> void: _set_difficulty(1.0))
+	_diff_hard = _btn("HARD", func() -> void: _set_difficulty(1.5))
+	for b in [_diff_easy, _diff_normal, _diff_hard]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b)
+	wrap.add_child(row)
+	var hint := Label.new()
+	hint.name = "DiffHint"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 14)
+	hint.add_theme_color_override("font_color", Color(0.62, 0.55, 0.45))
+	wrap.add_child(hint)
+	_refresh_difficulty_picker()
+	return wrap
+
+
 func _difficulty_multiplier() -> float:
 	var gm := get_node_or_null("/root/GameManager")
 	if gm == null:
@@ -133,28 +162,33 @@ func _difficulty_multiplier() -> float:
 	return float(gm.get("difficulty_multiplier"))
 
 
-func _difficulty_label() -> String:
-	var mul := _difficulty_multiplier()
-	if mul <= 0.6:
-		return "HANDICAP  ·  EASY  0.5"
-	if mul >= 1.4:
-		return "HANDICAP  ·  HARD  1.5"
-	return "HANDICAP  ·  NORMAL  1.0"
-
-
-func _cycle_difficulty() -> void:
+func _set_difficulty(mul: float) -> void:
 	var gm := get_node_or_null("/root/GameManager")
 	if gm == null:
 		return
-	var mul := float(gm.get("difficulty_multiplier"))
-	if mul <= 0.6:
-		gm.set("difficulty_multiplier", 1.0)
-	elif mul < 1.4:
-		gm.set("difficulty_multiplier", 1.5)
+	gm.set("difficulty_multiplier", mul)
+	_refresh_difficulty_picker()
+
+
+func _refresh_difficulty_picker() -> void:
+	var mul := _difficulty_multiplier()
+	_paint_diff_button(_diff_easy, mul <= 0.6)
+	_paint_diff_button(_diff_normal, mul > 0.6 and mul < 1.4)
+	_paint_diff_button(_diff_hard, mul >= 1.4)
+	if _menu == null:
+		return
+	var hint := _menu.find_child("DiffHint", true, false) as Label
+	if hint:
+		hint.text = "Bot HP & damage  ×  %.1f" % mul
+
+
+func _paint_diff_button(button: Button, selected: bool) -> void:
+	if button == null:
+		return
+	if selected:
+		button.modulate = Color(1.0, 0.58, 0.18)
 	else:
-		gm.set("difficulty_multiplier", 0.5)
-	if _diff_btn:
-		_diff_btn.text = _difficulty_label()
+		button.modulate = Color(0.72, 0.68, 0.6)
 
 
 func _start_match() -> void:

@@ -68,7 +68,7 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 - On line-of-sight, stops following the path and strafes while firing a hitscan (spread from `accuracy_error` degrees)
 - Free-for-all: bots shoot the closest visible foe (player **or** another bot), with revenge on last attacker
 - **Personality** (`int`): `0` Aggressive charges with `move_and_slide`, `1` Defensive kites away, `2` Sniper stands still and fires on LOS, `3` Normal strafe/path, `4` Crazy rushes and jitters. Arena spawn: Grunt aggressive, Ranger sniper, Visl crazy
-- **Handicap:** autoload `GameManager.difficulty_multiplier` (default `1.0`). Bot spawn health and hitscan damage are `base * multiplier`. `0.5` is Easy (half bot HP and damage). Title menu cycles Easy / Normal / Hard
+- **Handicap:** autoload `GameManager.difficulty_multiplier` (default `1.0`). Bot spawn health and hitscan damage are `base * multiplier`. `0.5` is Easy (half bot HP and damage). The title screen has **EASY / NORMAL / HARD** (0.5 / 1.0 / 1.5)
 - Exports: `personality`, `movement_speed`, `attack_cooldown`, `vision_range`, `accuracy_error`
 - Missing or dead players are ignored; the bot wanders nav points instead
 - **Custom mesh:** `assets/warrior.glb`, `assets/Warrior2.glb`, `assets/female.glb`. Capsules hide; collision stays the 1.8 m capsule. These GLBs have **no clips**, so walking uses a stride bob (height + roll). Drop a rigged GLB with `Idle` / `Walk` / `Run` / `Jump` and [`scripts/locomotion_anim.gd`](scripts/locomotion_anim.gd) builds an AnimationTree (BlendSpace1D on the ground, state-machine xfade to Air). `model_yaw_degrees` default **180**.

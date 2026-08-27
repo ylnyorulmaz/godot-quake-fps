@@ -9,6 +9,7 @@ func _init() -> void:
 	var failed := 0
 	failed += _test_default_multiplier()
 	failed += _test_easy_scales_values()
+	failed += _test_main_has_difficulty_picker()
 	if failed > 0:
 		push_error("game_manager tests failed: %d" % failed)
 		quit(1)
@@ -38,4 +39,13 @@ func _test_easy_scales_values() -> int:
 		return 1
 	print("ok   0.5 multiplier halves health and damage")
 	gm.free()
+	return 0
+
+
+func _test_main_has_difficulty_picker() -> int:
+	var src := FileAccess.get_file_as_string("res://scripts/main.gd")
+	if src.find("_build_difficulty_picker") < 0 or src.find("_set_difficulty") < 0:
+		push_error("title screen is missing the difficulty picker")
+		return 1
+	print("ok   title screen exposes Easy/Normal/Hard")
 	return 0
