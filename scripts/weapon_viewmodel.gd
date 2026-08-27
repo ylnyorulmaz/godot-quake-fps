@@ -5,6 +5,7 @@ extends RefCounted
 ## boxy rocket tubes, coiled rail.
 
 const SkinGen := preload("res://scripts/weapon_skin.gd")
+const MG_MUZZLE_LOCAL := Vector3(0.0, 0.04, -0.72)
 
 
 static func build(weapon_id: String) -> Node3D:
@@ -22,34 +23,105 @@ static func build(weapon_id: String) -> Node3D:
 	return root
 
 
+static func barrel_cluster(gun: Node3D) -> Node3D:
+	if gun == null:
+		return null
+	return gun.get_node_or_null("BarrelCluster") as Node3D
+
+
+static func spin_barrels(gun: Node3D, radians: float) -> void:
+	var cluster := barrel_cluster(gun)
+	if cluster == null or radians == 0.0:
+		return
+	cluster.rotate_object_local(Vector3.FORWARD, radians)
+
+
+static func set_muzzle_flash(gun: Node3D, amount: float) -> void:
+	var cluster := barrel_cluster(gun)
+	if cluster == null:
+		return
+	var flash := cluster.get_node_or_null("MuzzleFlash") as Node3D
+	var light := cluster.get_node_or_null("MuzzleLight") as OmniLight3D
+	var heat := cluster.get_node_or_null("MuzzleHeat") as MeshInstance3D
+	var t := clampf(amount, 0.0, 1.0)
+	if flash:
+		flash.visible = t > 0.04
+		flash.scale = Vector3.ONE * (0.65 + t * 1.15)
+		if t >= 0.95:
+			flash.rotation.z = randf() * TAU
+	if light:
+		light.light_energy = t * 4.2
+		light.visible = t > 0.04
+	if heat and heat.material_override is StandardMaterial3D:
+		var mat := heat.material_override as StandardMaterial3D
+		mat.emission_energy_multiplier = 1.6 + t * 4.5
+
+
 static func _machinegun(root: Node3D) -> void:
 	var steel: StandardMaterial3D = SkinGen.steel(11)
 	var blued: StandardMaterial3D = SkinGen.blued(19)
 	var brass: StandardMaterial3D = SkinGen.brass(53)
 	var rubber: StandardMaterial3D = SkinGen.grip(31)
 	var hot: StandardMaterial3D = SkinGen.heat(13)
-	# Receiver
-	_box(root, Vector3(0.11, 0.12, 0.34), Vector3(0.0, 0.02, -0.02), steel)
-	_box(root, Vector3(0.09, 0.08, 0.16), Vector3(0.0, 0.01, 0.2), blued)
-	# Barrel shroud + six-barrel cluster
-	_cyl(root, 0.055, 0.048, 0.22, Vector3(0.0, 0.04, -0.28), steel)
+	var rust: StandardMaterial3D = SkinGen.rust(7)
+	var stripe: StandardMaterial3D = SkinGen.caution(17)
+	# Stepped gothic receiver
+	_box(root, Vector3(0.13, 0.14, 0.38), Vector3(0.0, 0.02, 0.0), steel)
+	_box(root, Vector3(0.11, 0.09, 0.16), Vector3(0.0, 0.01, 0.22), blued)
+	_box(root, Vector3(0.14, 0.03, 0.2), Vector3(0.0, 0.1, -0.04), rust)
+	_box(root, Vector3(0.04, 0.05, 0.1), Vector3(0.06, 0.02, 0.08), stripe)
+	# Ejection port + cocking handle
+	_box(root, Vector3(0.05, 0.04, 0.1), Vector3(-0.08, 0.05, -0.04), blued)
+	_box(root, Vector3(0.08, 0.018, 0.018), Vector3(-0.12, 0.06, 0.02), steel)
+	# Rotary cluster (spins while firing)
+	var cluster := Node3D.new()
+	cluster.name = "BarrelCluster"
+	cluster.position = Vector3(0.0, 0.04, -0.30)
+	root.add_child(cluster)
+	_cyl(cluster, 0.02, 0.02, 0.36, Vector3(0.0, 0.0, -0.08), steel)
+	_ring(cluster, 0.058, 0.012, Vector3(0.0, 0.0, 0.06), steel)
+	_ring(cluster, 0.056, 0.01, Vector3(0.0, 0.0, -0.12), blued)
+	_ring(cluster, 0.05, 0.01, Vector3(0.0, 0.0, -0.28), brass)
 	for i in 6:
 		var ang := float(i) * TAU / 6.0
-		var ox := cos(ang) * 0.028
-		var oy := 0.04 + sin(ang) * 0.028
-		_cyl(root, 0.011, 0.011, 0.4, Vector3(ox, oy, -0.42), blued)
-	_cyl(root, 0.016, 0.016, 0.08, Vector3(0.0, 0.04, -0.64), brass)
-	_disc(root, 0.03, Vector3(0.0, 0.04, -0.69), hot)
-	# Ammo box + belt
-	_box(root, Vector3(0.08, 0.12, 0.16), Vector3(0.1, -0.02, 0.04), blued)
-	_box(root, Vector3(0.03, 0.03, 0.12), Vector3(0.07, 0.04, -0.08), brass)
-	for i in 5:
-		_box(root, Vector3(0.018, 0.014, 0.022), Vector3(0.09, 0.05, -0.02 - float(i) * 0.028), brass)
-	# Grip, stock, sights
-	_box(root, Vector3(0.045, 0.12, 0.05), Vector3(0.0, -0.1, 0.12), rubber)
-	_box(root, Vector3(0.04, 0.035, 0.14), Vector3(0.0, -0.04, 0.28), rubber)
-	_box(root, Vector3(0.02, 0.05, 0.08), Vector3(0.0, 0.1, -0.06), steel)
-	_box(root, Vector3(0.012, 0.03, 0.012), Vector3(0.0, 0.14, -0.08), brass)
+		var ox := cos(ang) * 0.032
+		var oy := sin(ang) * 0.032
+		_cyl(cluster, 0.012, 0.01, 0.44, Vector3(ox, oy, -0.14), blued)
+		_cyl(cluster, 0.014, 0.014, 0.04, Vector3(ox, oy, -0.36), brass)
+	var heat := _disc(cluster, 0.034, Vector3(0.0, 0.0, -0.42), hot)
+	heat.name = "MuzzleHeat"
+	var flash := _disc(cluster, 0.055, Vector3(0.0, 0.0, -0.46), hot)
+	flash.name = "MuzzleFlash"
+	flash.visible = false
+	var flare := OmniLight3D.new()
+	flare.name = "MuzzleLight"
+	flare.light_color = Color(1.0, 0.55, 0.12)
+	flare.light_energy = 0.0
+	flare.omni_range = 1.4
+	flare.shadow_enabled = false
+	flare.visible = false
+	flare.position = Vector3(0.0, 0.0, -0.48)
+	cluster.add_child(flare)
+	# Static barrel jacket + front sight (does not spin)
+	_cyl(root, 0.062, 0.058, 0.1, Vector3(0.0, 0.04, -0.22), steel)
+	_box(root, Vector3(0.016, 0.05, 0.04), Vector3(0.0, 0.12, -0.34), steel)
+	_box(root, Vector3(0.01, 0.03, 0.01), Vector3(0.0, 0.16, -0.36), brass)
+	# Side ammo drum + feed belt
+	_cyl(root, 0.07, 0.07, 0.16, Vector3(0.12, -0.01, 0.02), blued)
+	_cyl(root, 0.072, 0.072, 0.03, Vector3(0.12, -0.01, 0.1), rust)
+	_box(root, Vector3(0.04, 0.04, 0.14), Vector3(0.08, 0.05, -0.08), brass)
+	_box(root, Vector3(0.09, 0.03, 0.1), Vector3(0.12, 0.08, 0.02), stripe)
+	for i in 8:
+		_box(root, Vector3(0.02, 0.015, 0.024), Vector3(0.09, 0.055, -0.02 - float(i) * 0.026), brass)
+	# Grip, trigger, stock
+	_box(root, Vector3(0.05, 0.14, 0.055), Vector3(0.0, -0.12, 0.12), rubber)
+	_box(root, Vector3(0.035, 0.04, 0.07), Vector3(0.0, -0.08, 0.05), steel)
+	_box(root, Vector3(0.045, 0.04, 0.16), Vector3(0.0, -0.04, 0.3), rubber)
+	_box(root, Vector3(0.08, 0.1, 0.04), Vector3(0.0, -0.02, 0.4), rust)
+	# Carrying handle
+	_box(root, Vector3(0.018, 0.02, 0.16), Vector3(0.0, 0.16, 0.04), steel)
+	_box(root, Vector3(0.018, 0.05, 0.02), Vector3(0.0, 0.14, -0.04), steel)
+	_box(root, Vector3(0.018, 0.05, 0.02), Vector3(0.0, 0.14, 0.12), steel)
 
 
 static func _shotgun(root: Node3D) -> void:
