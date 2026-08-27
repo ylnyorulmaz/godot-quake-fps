@@ -63,6 +63,9 @@ var _los: RayCast3D
 var _shoot_timer: Timer
 var _mesh: MeshInstance3D
 var _visual: Node3D
+var _has_anim := false
+var _visual_base_y := 0.0
+var _bob_t := 0.0
 var _player: Node3D
 var _alive := true
 var _has_los := false
@@ -153,6 +156,7 @@ func _attach_imported_visual() -> void:
 	if get_node_or_null("VisualModel") != null:
 		_visual = get_node_or_null("VisualModel") as Node3D
 		_hide_placeholder_meshes()
+		_setup_locomotion_visual()
 		return
 	var packed := ImportedModel.load_packed(model_scene, model_path)
 	if packed == null:
@@ -161,6 +165,7 @@ func _attach_imported_visual() -> void:
 	if _visual == null:
 		return
 	_hide_placeholder_meshes()
+	_setup_locomotion_visual()
 
 
 func _hide_placeholder_meshes() -> void:
@@ -168,6 +173,14 @@ func _hide_placeholder_meshes() -> void:
 		var node := get_node_or_null(mesh_name) as Node3D
 		if node:
 			node.visible = false
+
+
+func _setup_locomotion_visual() -> void:
+	if _visual == null:
+		return
+	_has_anim = ImportedModel.play_idle(_visual)
+	_visual_base_y = _visual.position.y
+	_bob_t = 0.0
 
 
 func _apply_color() -> void:
@@ -242,6 +255,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_apply_horizontal(desired, delta)
 		move_and_slide()
+		_update_walk_bob(delta)
 
 
 func _on_velocity_computed(safe_velocity: Vector3) -> void:
@@ -249,12 +263,26 @@ func _on_velocity_computed(safe_velocity: Vector3) -> void:
 		return
 	_apply_horizontal(safe_velocity, get_physics_process_delta_time())
 	move_and_slide()
+	_update_walk_bob(get_physics_process_delta_time())
 
 
 func _apply_horizontal(desired: Vector3, delta: float) -> void:
 	var dt := delta if delta > 0.0 else 0.016
 	velocity.x = move_toward(velocity.x, desired.x, acceleration * dt)
 	velocity.z = move_toward(velocity.z, desired.z, acceleration * dt)
+
+
+func _update_walk_bob(delta: float) -> void:
+	if _visual == null or _has_anim or not _alive:
+		return
+	var dt := delta if delta > 0.0 else 0.016
+	var spd := Vector2(velocity.x, velocity.z).length()
+	if spd > 0.5:
+		_bob_t += dt * (6.0 + spd * 0.35)
+		_visual.position.y = _visual_base_y + absf(sin(_bob_t)) * 0.07
+	else:
+		_bob_t = 0.0
+		_visual.position.y = lerpf(_visual.position.y, _visual_base_y, 1.0 - exp(-12.0 * dt))
 
 
 func _desired_horizontal(player: Node3D) -> Vector3:
@@ -529,6 +557,9 @@ func respawn_at(pos: Vector3) -> void:
 			health_comp.add_armor(25.0, health_comp.max_armor)
 	if _shoot_timer:
 		_shoot_timer.start()
+	if _visual:
+		_visual.position.y = _visual_base_y
+		_bob_t = 0.0
 	if _mesh and _mesh.material_override is StandardMaterial3D:
 		(_mesh.material_override as StandardMaterial3D).emission_energy_multiplier = 0.0
 

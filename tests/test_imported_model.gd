@@ -9,6 +9,8 @@ func _init() -> void:
 	var failed := 0
 	failed += _test_missing_path()
 	failed += _test_repo_glbs()
+	failed += _test_shipped_glbs_have_no_clips()
+	failed += _test_play_idle()
 	failed += _test_fit_box_height()
 	failed += _test_sanitize_collision()
 	if failed > 0:
@@ -41,6 +43,48 @@ func _test_repo_glbs() -> int:
 		push_error("res://assets/female.glb did not load as PackedScene")
 		return 1
 	print("ok   warrior, Warrior2, and female load as PackedScene")
+	return 0
+
+
+func _test_shipped_glbs_have_no_clips() -> int:
+	for path in ["res://assets/warrior.glb", "res://assets/Warrior2.glb", "res://assets/female.glb"]:
+		var packed := load(path) as PackedScene
+		if packed == null:
+			push_error("%s missing" % path)
+			return 1
+		var inst := packed.instantiate()
+		root.add_child(inst)
+		if Imported.play_idle(inst):
+			push_error("%s has clips; walk bob should not be the fallback" % path)
+			return 1
+		# Identity glTF roots: Godot faces -Z, so EnemyBot yaw 180 is the right default.
+		if inst is Node3D and absf((inst as Node3D).rotation.y) > 0.01:
+			push_error("%s imported with unexpected yaw %.3f" % [path, (inst as Node3D).rotation.y])
+			return 1
+	print("ok   shipped GLBs have no clips; identity yaw so bot uses 180")
+	return 0
+
+
+func _test_play_idle() -> int:
+	var visual := Node3D.new()
+	root.add_child(visual)
+	if Imported.play_idle(visual):
+		push_error("empty visual should not report idle animation")
+		return 1
+	var ap := AnimationPlayer.new()
+	var anim := Animation.new()
+	anim.length = 0.5
+	var lib := AnimationLibrary.new()
+	lib.add_animation("Idle", anim)
+	ap.add_animation_library("", lib)
+	visual.add_child(ap)
+	if not Imported.play_idle(visual):
+		push_error("Idle clip should play")
+		return 1
+	if ap.current_animation != "Idle":
+		push_error("expected Idle, got %s" % ap.current_animation)
+		return 1
+	print("ok   play_idle loops Idle when present")
 	return 0
 
 

@@ -237,7 +237,10 @@ func _on_match_ended() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_end.visible = true
 	var msg := _end.get_node("Msg") as Label
-	msg.text = "FRAG LIMIT  ·  %d kills" % GameState.player_kills
+	var winner := GameState.last_winner
+	if winner.is_empty():
+		winner = GameState.PLAYER_NAME
+	msg.text = "%s WINS  ·  %d frags" % [winner, GameState.winner_frags()]
 	await get_tree().create_timer(4.0).timeout
 	_end.visible = false
 	_menu.visible = true

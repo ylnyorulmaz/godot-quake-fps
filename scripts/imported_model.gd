@@ -55,7 +55,7 @@ static func instantiate_under(
 	parent.add_child(inst)
 	sanitize(inst)
 	fit_to_capsule(inst, target_height, yaw_degrees)
-	play_first_animation(inst)
+	play_idle(inst)
 	return inst as Node3D
 
 
@@ -130,14 +130,28 @@ static func _node_aabb(node: Node) -> AABB:
 	return AABB()
 
 
-static func play_first_animation(root: Node) -> void:
+static func play_idle(root: Node) -> bool:
 	var player := _find_animation_player(root)
 	if player == null:
-		return
+		return false
 	var names := player.get_animation_list()
 	if names.is_empty():
-		return
-	player.play(names[0])
+		return false
+	var pick := names[0]
+	for n in names:
+		var lower := n.to_lower()
+		if "idle" in lower or "wait" in lower or "stand" in lower:
+			pick = n
+			break
+	var anim := player.get_animation(pick)
+	if anim:
+		anim.loop_mode = Animation.LOOP_LINEAR
+	player.play(pick)
+	return true
+
+
+static func play_first_animation(root: Node) -> void:
+	play_idle(root)
 
 
 static func _find_animation_player(root: Node) -> AnimationPlayer:
