@@ -65,15 +65,13 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 - On line-of-sight, stops following the path and strafes while firing a hitscan (spread from `accuracy_error`)
 - Exports: `movement_speed`, `attack_cooldown`, `vision_range`, `accuracy_error`
 - Missing or dead players are ignored; the bot wanders nav points instead
-- **Custom mesh:** drop `assets/models/warrior.glb` (see below). Capsules hide; collision stays the 1.8 m capsule.
+- **Custom mesh:** `assets/warrior.glb` and `assets/Warrior2.glb`. Capsules hide; collision stays the 1.8 m capsule.
 
 ## Custom 3D model
 
-Recommended: [Low poly Warrior on Sketchfab](https://sketchfab.com/3d-models/low-poly-warrior-3d-model-free-fa42852a8e314dfd932ebc294d32414f) (CC Attribution, download GLB with a free Sketchfab account). Save as `assets/models/warrior.glb`, wait for Godot import, press **F5**.
+`assets/warrior.glb` (Grunt, Visl) and `assets/Warrior2.glb` (Ranger) load on match start. Credit: iRahulRajput, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — `assets/models/CREDITS.md`.
 
-Credit: iRahulRajput (`assets/models/CREDITS.md`). If the mesh faces the wrong way, set **Model Yaw Degrees** on `EnemyBot` (default **180**). Height scales to `target_height` (1.8 m).
-
-More detail: `assets/models/README.md`. Inspector alternatives: assign `model_scene`, or point `model_path` at another `.glb` / `.gltf` / `.tscn`.
+If a mesh faces the wrong way, set **Model Yaw Degrees** on `EnemyBot` (default **180**). Height scales to `target_height` (1.8 m).
 
 ## Health and armor
 

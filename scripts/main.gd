@@ -9,6 +9,11 @@ var _bots: Array[EnemyBot] = []
 const BOT_COUNT := 3
 const BOT_NAMES := ["Grunt", "Ranger", "Visl"]
 const BOT_COLORS := [Color(0.75, 0.18, 0.15), Color(0.2, 0.45, 0.8), Color(0.55, 0.2, 0.7)]
+const BOT_MODELS := [
+	"res://assets/warrior.glb",
+	"res://assets/Warrior2.glb",
+	"res://assets/warrior.glb",
+]
 
 
 func _ready() -> void:
@@ -149,6 +154,7 @@ func _start_match() -> void:
 			bot = bot_script.new() as EnemyBot
 		bot.bot_name = BOT_NAMES[i]
 		bot.color = BOT_COLORS[i]
+		bot.model_path = BOT_MODELS[i]
 		bot.name = BOT_NAMES[i]
 		bot.player_path = NodePath("../Player")
 		bot.process_mode = Node.PROCESS_MODE_PAUSABLE

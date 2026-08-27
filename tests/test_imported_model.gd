@@ -8,6 +8,7 @@ const Imported := preload("res://scripts/imported_model.gd")
 func _init() -> void:
 	var failed := 0
 	failed += _test_missing_path()
+	failed += _test_repo_glbs()
 	failed += _test_fit_box_height()
 	failed += _test_sanitize_collision()
 	if failed > 0:
@@ -19,11 +20,23 @@ func _init() -> void:
 
 
 func _test_missing_path() -> int:
-	var packed: PackedScene = Imported.load_packed(null, "res://assets/models/does_not_exist.glb")
-	if packed != null:
-		push_error("missing glb should not load")
+	if ResourceLoader.exists("res://assets/models/does_not_exist.glb"):
+		push_error("bogus glb path should not exist")
 		return 1
-	print("ok   missing model returns null")
+	print("ok   missing model path does not exist")
+	return 0
+
+
+func _test_repo_glbs() -> int:
+	var warrior: PackedScene = Imported.load_packed(null, "res://assets/warrior.glb")
+	var warrior2: PackedScene = Imported.load_packed(null, "res://assets/Warrior2.glb")
+	if warrior == null:
+		push_error("res://assets/warrior.glb did not load as PackedScene")
+		return 1
+	if warrior2 == null:
+		push_error("res://assets/Warrior2.glb did not load as PackedScene")
+		return 1
+	print("ok   warrior and Warrior2 load as PackedScene")
 	return 0
 
 

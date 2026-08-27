@@ -19,9 +19,9 @@ signal died(killer: Node)
 @export var color: Color = Color(0.75, 0.18, 0.15)
 
 @export_category("Visual")
-## Drag a PackedScene here, or leave empty and drop `warrior.glb` in assets/models/.
+## Drag a PackedScene here, or leave empty and drop `warrior.glb` in assets/.
 @export var model_scene: PackedScene
-@export var model_path: String = "res://assets/models/warrior.glb"
+@export var model_path: String = "res://assets/warrior.glb"
 @export var target_height: float = 1.8
 ## Godot characters face -Z. Tripo/Blender meshes often face +Z.
 @export var model_yaw_degrees: float = 180.0
