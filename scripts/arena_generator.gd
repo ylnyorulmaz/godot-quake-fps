@@ -49,6 +49,7 @@ func _build() -> void:
 	_jump_pads()
 	_mega_health()
 	_pickups()
+	_power_ups()
 	_spawns()
 	_nav_points()
 	_lights()
@@ -304,6 +305,22 @@ func _item(pos: Vector3, kind: Pickup.Kind, respawn: float) -> void:
 	p.configure(kind, respawn)
 	p.position = pos
 	add_child(p)
+
+
+func _power_ups() -> void:
+	_power_item(Vector3(0.0, 1.25, 12.0), PowerUp.Kind.QUAD, false)
+	_power_item(Vector3(22.0, 1.25, 0.0), PowerUp.Kind.HASTE, false)
+	_power_item(Vector3(-22.0, 1.25, 0.0), PowerUp.Kind.INVIS, false)
+	_power_item(Vector3(0.0, 1.25, -12.0), PowerUp.Kind.QUAD, true)
+
+
+func _power_item(pos: Vector3, kind: PowerUp.Kind, wild: bool) -> void:
+	var item := PowerUp.new()
+	item.configure(kind, 30.0, 15.0)
+	item.position = pos
+	item.relocate_on_respawn = wild
+	item.randomize_kind_on_respawn = wild
+	add_child(item)
 
 
 func _spawns() -> void:

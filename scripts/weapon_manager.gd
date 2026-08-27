@@ -244,7 +244,7 @@ func _fire_hitscan(data: WeaponData, aim: Transform3D) -> void:
 				hit_pos = result.position
 				collider = result.collider
 		if collider != null and collider.has_method("take_damage"):
-			collider.take_damage(data.damage, dir, data.knockback, owner_body)
+			collider.take_damage(_outgoing_damage(data.damage), dir, data.knockback, owner_body)
 		if is_player or is_center:
 			_spawn_trail(from, hit_pos, data)
 
@@ -262,7 +262,7 @@ func _fire_rail(data: WeaponData, aim: Transform3D) -> void:
 		if _ray.is_colliding():
 			var first := _ray.get_collider()
 			if first != null and first.has_method("take_damage"):
-				first.take_damage(data.damage, dir, data.knockback, owner_body)
+				first.take_damage(_outgoing_damage(data.damage), dir, data.knockback, owner_body)
 				if first is CollisionObject3D:
 					exclude.append((first as CollisionObject3D).get_rid())
 				from = _ray.get_collision_point() + dir * 0.05
@@ -278,7 +278,7 @@ func _fire_rail(data: WeaponData, aim: Transform3D) -> void:
 		end = result.position
 		var collider: Object = result.collider
 		if collider != null and collider.has_method("take_damage"):
-			collider.take_damage(data.damage, dir, data.knockback, owner_body)
+			collider.take_damage(_outgoing_damage(data.damage), dir, data.knockback, owner_body)
 			if collider is CollisionObject3D:
 				exclude.append((collider as CollisionObject3D).get_rid())
 			from = result.position + dir * 0.05
@@ -304,7 +304,7 @@ func _fire_projectile(data: WeaponData, aim: Transform3D) -> void:
 		rocket.configure(
 				owner_body,
 				dir,
-				data.damage,
+				_outgoing_damage(data.damage),
 				data.splash_radius,
 				data.splash_knockback,
 				data.projectile_speed,
@@ -360,6 +360,12 @@ func _fx_host() -> Node:
 	if host == null:
 		host = owner_body.get_tree().current_scene
 	return host
+
+
+func _outgoing_damage(base: float) -> float:
+	if owner_body != null and owner_body.has_method("outgoing_damage_scale"):
+		return base * float(owner_body.call("outgoing_damage_scale"))
+	return base
 
 
 func _play_fire_sound(data: WeaponData, at: Vector3) -> void:

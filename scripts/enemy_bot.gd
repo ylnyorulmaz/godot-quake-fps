@@ -12,6 +12,8 @@ extends CharacterBody3D
 ##     BodyMesh / HeadMesh (hidden when a Tripo GLB is present)
 ##     VisualModel (optional imported mesh)
 
+const PowerUpHold := preload("res://scripts/power_up_state.gd")
+
 signal died(killer: Node)
 
 @export_category("Identity")
@@ -94,6 +96,8 @@ var _scaled_damage := 7.0
 var _crazy_swap := 0.0
 var _crazy_mode := 0
 var _crazy_dir := Vector3.FORWARD
+var _power
+var _power_overlay: StandardMaterial3D
 
 
 func _ready() -> void:
@@ -114,6 +118,12 @@ func _ready() -> void:
 		health_comp.died.connect(_on_vitals_died)
 	_capture_base_stats()
 	_apply_difficulty()
+	if get_node_or_null("PowerUpState") == null:
+		_power = PowerUpHold.new()
+		_power.name = "PowerUpState"
+		add_child(_power)
+	else:
+		_power = get_node_or_null("PowerUpState") as Node
 	var gs := get_node_or_null("/root/GameState")
 	if gs != null and gs.has_method("register_bot"):
 		gs.register_bot(bot_name)
@@ -275,6 +285,10 @@ func _physics_process(delta: float) -> void:
 		_strafe_sign *= -1.0
 		_strafe_swap = randf_range(0.55, 1.25)
 	_tick_crazy(delta)
+	if _power:
+		_power.tick(delta)
+		_refresh_power_visual()
+		_agent.max_speed = _run_speed()
 
 	var player := _resolve_player()
 	_retarget -= delta
@@ -356,7 +370,7 @@ func _move_aggressive(target: Node3D) -> Vector3:
 	to_target.y = 0.0
 	if to_target.length_squared() < 0.04:
 		return Vector3.ZERO
-	return to_target.normalized() * movement_speed
+	return to_target.normalized() * _run_speed()
 
 
 func _move_defensive(target: Node3D) -> Vector3:
@@ -366,7 +380,7 @@ func _move_defensive(target: Node3D) -> Vector3:
 	away.y = 0.0
 	if away.length_squared() < 0.0001:
 		away = Vector3.RIGHT
-	return away.normalized() * movement_speed
+	return away.normalized() * _run_speed()
 
 
 func _move_sniper(_target: Node3D) -> Vector3:
@@ -386,7 +400,7 @@ func _move_crazy(target: Node3D) -> Vector3:
 				return _strafe_velocity(target)
 			return _path_velocity()
 		_:
-			var wish := _crazy_dir * movement_speed
+			var wish := _crazy_dir * _run_speed()
 			wish.y = 0.0
 			return wish
 
@@ -418,7 +432,7 @@ func _path_velocity() -> Vector3:
 	offset.y = 0.0
 	if offset.length_squared() < 0.04:
 		return Vector3.ZERO
-	return offset.normalized() * movement_speed
+	return offset.normalized() * _run_speed()
 
 
 func _strafe_velocity(target: Node3D) -> Vector3:
@@ -435,12 +449,12 @@ func _strafe_velocity(target: Node3D) -> Vector3:
 		side = side.normalized()
 	var wish := side * _strafe_sign * strafe_speed
 	if dist > ideal_range + 2.5:
-		wish += forward * movement_speed * 0.55
+		wish += forward * _run_speed() * 0.55
 	elif dist < ideal_range - 3.0:
-		wish -= forward * movement_speed * 0.45
+		wish -= forward * _run_speed() * 0.45
 	wish.y = 0.0
-	if wish.length() > movement_speed:
-		wish = wish.normalized() * movement_speed
+	if wish.length() > _run_speed():
+		wish = wish.normalized() * _run_speed()
 	return wish
 
 
@@ -504,6 +518,9 @@ func _has_line_to(target: Node3D) -> bool:
 		return false
 	if global_position.distance_to(target.global_position) > vision_range:
 		return false
+	if target.has_method("is_stealthed") and bool(target.call("is_stealthed")):
+		if global_position.distance_to(target.global_position) > 3.5:
+			return false
 	var aim := _chest_of(target)
 	_los.target_position = _los.to_local(aim)
 	_los.force_raycast_update()
@@ -717,6 +734,56 @@ func apply_pickup(kind: int) -> bool:
 			return false
 
 
+func apply_power_up(kind: int, seconds: float = -1.0) -> bool:
+	if not _alive:
+		return false
+	if _power == null:
+		_power = PowerUpHold.new()
+		_power.name = "PowerUpState"
+		add_child(_power)
+	if not _power.apply(kind, seconds):
+		return false
+	_refresh_power_visual()
+	if _agent:
+		_agent.max_speed = _run_speed()
+	return true
+
+
+func _run_speed() -> float:
+	return movement_speed * outgoing_speed_scale()
+
+
+func outgoing_damage_scale() -> float:
+	return _power.damage_scale() if _power else 1.0
+
+
+func outgoing_speed_scale() -> float:
+	return _power.speed_scale() if _power else 1.0
+
+
+func is_stealthed() -> bool:
+	return _power != null and _power.is_invisible()
+
+
+func _refresh_power_visual() -> void:
+	var tint := Color(1.0, 1.0, 1.0, 0.0)
+	if _power:
+		tint = _power.overlay_color()
+	if _power_overlay == null:
+		_power_overlay = StandardMaterial3D.new()
+		_power_overlay.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_power_overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_power_overlay.albedo_color = tint
+	var overlay: Material = _power_overlay if tint.a > 0.02 else null
+	if _mesh:
+		_mesh.material_overlay = overlay
+	if _visual:
+		var meshes: Array[MeshInstance3D] = []
+		_collect_meshes(_visual, meshes)
+		for mesh in meshes:
+			mesh.material_overlay = overlay
+
+
 func launch(impulse: Vector3) -> void:
 	if not _alive:
 		return
@@ -731,6 +798,9 @@ func _on_vitals_died() -> void:
 func _die(attacker: Node) -> void:
 	_alive = false
 	_has_los = false
+	if _power:
+		_power.clear()
+		_refresh_power_visual()
 	if _shoot_timer:
 		_shoot_timer.stop()
 	_play_fx("death", global_position)
@@ -747,6 +817,9 @@ func respawn_at(pos: Vector3) -> void:
 	collision_layer = 4
 	_has_los = false
 	_wander_target = Vector3.ZERO
+	if _power:
+		_power.clear()
+		_refresh_power_visual()
 	_apply_difficulty()
 	if health_comp:
 		health_comp.reset_to_spawn()
@@ -767,7 +840,7 @@ func is_alive() -> bool:
 
 
 func scaled_attack_damage() -> float:
-	return _scaled_damage
+	return _scaled_damage * outgoing_damage_scale()
 
 
 func _capture_base_stats() -> void:

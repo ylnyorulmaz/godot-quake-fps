@@ -87,6 +87,18 @@ If a mesh faces the wrong way, set **Model Yaw Degrees** on `EnemyBot` (default 
 
 Mega-Health: +100 HP, clamped to 200, 30s respawn.
 
+## Power-ups
+
+`PowerUp` (`scripts/power_up.gd`) is an `Area3D` cube/prism/sphere on layer 16. Pads on the arena:
+
+| Pickup | Effect | Color |
+| --- | --- | --- |
+| Quad Damage | outgoing damage ×4 for 15s | red |
+| Haste | move speed ×2 for 15s | yellow |
+| Invisibility | translucent body; bots lose LOS beyond ~3.5 m | cyan |
+
+Item **respawns in 30s**. Three pads are fixed; a fourth wild pad relocates to a random nav point and rerolls kind. Player and bots both `apply_power_up`. Active buffs tint the body (and the FPS screen / viewmodel) and show `QUAD 12` on the HUD. Death clears them.
+
 ## HUD
 
 `scripts/hud.gd` is a full-rect `CanvasLayer/Root` so it scales with the window.
