@@ -92,9 +92,12 @@ func _test_lines_expire() -> int:
 		push_error("line should start fading before it expires")
 		return 1
 	log._process(2.0)
-	await process_frame
-	if log.line_count() != 0:
-		push_error("expired lines should disappear, leftover %d" % log.line_count())
+	var leftover := 0
+	for child in log.get_children():
+		if not child.is_queued_for_deletion():
+			leftover += 1
+	if leftover != 0:
+		push_error("expired lines should disappear, leftover %d" % leftover)
 		return 1
 	print("ok   combat log lines fade and disappear")
 	log.queue_free()
