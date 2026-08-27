@@ -229,6 +229,7 @@ func _process(delta: float) -> void:
 	if player == null or not is_instance_valid(player):
 		return
 	_ammo.text = "%d" % player.weapons.current_ammo()
+	_ammo.add_theme_color_override("font_color", player.weapons.ammo_hud_color())
 	_weapon.text = player.weapons.current_name()
 	var target_ups := player.speed_ups()
 	_shown_ups = lerpf(_shown_ups, target_ups, 1.0 - exp(-14.0 * delta))
