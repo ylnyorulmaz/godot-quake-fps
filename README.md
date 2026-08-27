@@ -65,11 +65,11 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 - On line-of-sight, stops following the path and strafes while firing a hitscan (spread from `accuracy_error`)
 - Exports: `movement_speed`, `attack_cooldown`, `vision_range`, `accuracy_error`
 - Missing or dead players are ignored; the bot wanders nav points instead
-- **Custom mesh:** `assets/warrior.glb` and `assets/Warrior2.glb`. Capsules hide; collision stays the 1.8 m capsule.
+- **Custom mesh:** `assets/warrior.glb`, `assets/Warrior2.glb`, `assets/female.glb`. Capsules hide; collision stays the 1.8 m capsule.
 
 ## Custom 3D model
 
-`assets/warrior.glb` (Grunt, Visl) and `assets/Warrior2.glb` (Ranger) load on match start. Credit: iRahulRajput, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — `assets/models/CREDITS.md`.
+`assets/warrior.glb` (Grunt), `assets/Warrior2.glb` (Ranger), and `assets/female.glb` (Visl) load on match start. Warrior credit: iRahulRajput, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) — `assets/models/CREDITS.md`.
 
 If a mesh faces the wrong way, set **Model Yaw Degrees** on `EnemyBot` (default **180**). Height scales to `target_height` (1.8 m).
 

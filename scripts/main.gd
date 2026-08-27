@@ -12,7 +12,7 @@ const BOT_COLORS := [Color(0.75, 0.18, 0.15), Color(0.2, 0.45, 0.8), Color(0.55,
 const BOT_MODELS := [
 	"res://assets/warrior.glb",
 	"res://assets/Warrior2.glb",
-	"res://assets/warrior.glb",
+	"res://assets/female.glb",
 ]
 
 

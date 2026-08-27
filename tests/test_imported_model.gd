@@ -30,13 +30,17 @@ func _test_missing_path() -> int:
 func _test_repo_glbs() -> int:
 	var warrior: PackedScene = Imported.load_packed(null, "res://assets/warrior.glb")
 	var warrior2: PackedScene = Imported.load_packed(null, "res://assets/Warrior2.glb")
+	var female: PackedScene = Imported.load_packed(null, "res://assets/female.glb")
 	if warrior == null:
 		push_error("res://assets/warrior.glb did not load as PackedScene")
 		return 1
 	if warrior2 == null:
 		push_error("res://assets/Warrior2.glb did not load as PackedScene")
 		return 1
-	print("ok   warrior and Warrior2 load as PackedScene")
+	if female == null:
+		push_error("res://assets/female.glb did not load as PackedScene")
+		return 1
+	print("ok   warrior, Warrior2, and female load as PackedScene")
 	return 0
 
 

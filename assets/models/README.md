@@ -2,7 +2,8 @@
 
 Bot görselleri `assets/` altında:
 
-- `assets/warrior.glb` — Grunt ve Visl
+- `assets/warrior.glb` — Grunt
 - `assets/Warrior2.glb` — Ranger
+- `assets/female.glb` — Visl
 
 Godot 4.7.2’de **F5**. Yön tersse `EnemyBot` → **Model Yaw Degrees** (varsayılan 180). Lisans: `CREDITS.md`.

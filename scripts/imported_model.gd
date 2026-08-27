@@ -10,6 +10,7 @@ const DEFAULT_CANDIDATES: PackedStringArray = [
 	"res://assets/warrior.glb",
 	"res://assets/Warrior2.glb",
 	"res://assets/warrior2.glb",
+	"res://assets/female.glb",
 	"res://assets/models/warrior.glb",
 	"res://assets/models/warrior.gltf",
 	"res://assets/models/orc.glb",
