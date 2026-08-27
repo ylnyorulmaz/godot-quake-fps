@@ -44,7 +44,7 @@ func _ready() -> void:
 	monitoring = true
 	monitorable = false
 	collision_layer = 8
-	collision_mask = 1 | 2 | 4
+	collision_mask = 1 | 2 | 4 | 32
 	if not body_entered.is_connected(_on_body):
 		body_entered.connect(_on_body)
 
@@ -90,7 +90,7 @@ func _ready() -> void:
 	splash_shape.radius = splash_radius
 	_splash.shape = splash_shape
 	_splash.target_position = Vector3.ZERO
-	_splash.collision_mask = 2 | 4
+	_splash.collision_mask = 2 | 4 | 32
 	_splash.collide_with_areas = false
 	_splash.collide_with_bodies = true
 	_splash.enabled = false
@@ -110,7 +110,7 @@ func _physics_process(delta: float) -> void:
 	var to := from + direction * speed * delta
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.collision_mask = 1 | 2 | 4
+	query.collision_mask = 1 | 2 | 4 | 32
 	query.exclude = _exclude()
 	var hit := space.intersect_ray(query)
 	if hit:
@@ -161,7 +161,7 @@ func _explode(at: Vector3) -> void:
 	sphere.radius = splash_radius
 	query.shape = sphere
 	query.transform = Transform3D(Basis(), at)
-	query.collision_mask = 2 | 4
+	query.collision_mask = 2 | 4 | 32
 	query.collide_with_areas = false
 	query.collide_with_bodies = true
 	var results := space.intersect_shape(query, 32)
