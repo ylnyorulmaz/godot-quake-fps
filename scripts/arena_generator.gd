@@ -14,6 +14,8 @@ extends Node3D
 ##     JumpPadsContainer
 ##     MegaHealth, spawn markers, lights, extra pickups
 
+const Layouts := preload("res://scripts/arena_layouts.gd")
+
 const FLOOR_SIZE := 100.0
 const RAMP_RUN := 18.0
 const RAMP_WIDTH := 6.0
@@ -28,6 +30,12 @@ const HALLWAY_HEIGHT := 3.6
 var _combiner: CSGCombiner3D
 var _pads: Node3D
 var _nav_region: NavigationRegion3D
+## 0 yard (100m test), 1 tight two-level. Set before add_child / _ready.
+@export var layout: int = 0
+
+
+func floor_size() -> float:
+	return Layouts.floor_size(layout)
 
 
 func _ready() -> void:
@@ -43,7 +51,10 @@ func _build() -> void:
 	_ensure_containers()
 	_floor_and_hull()
 	_ramps()
-	_gap_course()
+	if Layouts.is_tight(layout):
+		_tight_upper()
+	else:
+		_gap_course()
 	_hallway()
 	_cover()
 	_jump_pads()
@@ -116,7 +127,7 @@ func _ensure_containers() -> void:
 		var floor_mesh := MeshInstance3D.new()
 		floor_mesh.name = "NavFloor"
 		var plane := PlaneMesh.new()
-		plane.size = Vector2(FLOOR_SIZE - 2.0, FLOOR_SIZE - 2.0)
+		plane.size = Vector2(floor_size() - 2.0, floor_size() - 2.0)
 		floor_mesh.mesh = plane
 		floor_mesh.position.y = 0.02
 		floor_mesh.visible = false
@@ -159,25 +170,24 @@ func _environment() -> void:
 
 
 func _floor_and_hull() -> void:
+	var size := floor_size()
 	# Massive test floor: top face sits on y = 0.
-	_csg_box(Vector3(0, -0.5, 0), Vector3(FLOOR_SIZE, 1.0, FLOOR_SIZE), _mat_floor())
+	_csg_box(Vector3(0, -0.5, 0), Vector3(size, 1.0, size), _mat_floor())
 	# Perimeter walls keep rocket-jumps and overshoots inside the volume.
 	var wall := _mat_wall()
 	var h := 16.0
-	var half := FLOOR_SIZE * 0.5 + 0.5
-	_csg_box(Vector3(0, h * 0.5, -half), Vector3(FLOOR_SIZE + 1.0, h, 1.0), wall)
-	_csg_box(Vector3(0, h * 0.5, half), Vector3(FLOOR_SIZE + 1.0, h, 1.0), wall)
-	_csg_box(Vector3(-half, h * 0.5, 0), Vector3(1.0, h, FLOOR_SIZE + 1.0), wall)
-	_csg_box(Vector3(half, h * 0.5, 0), Vector3(1.0, h, FLOOR_SIZE + 1.0), wall)
-	# Open sky: a full ceiling plus directional shadows made the metallic
-	# floor unreadable on the Compatibility renderer.
+	var half := size * 0.5 + 0.5
+	_csg_box(Vector3(0, h * 0.5, -half), Vector3(size + 1.0, h, 1.0), wall)
+	_csg_box(Vector3(0, h * 0.5, half), Vector3(size + 1.0, h, 1.0), wall)
+	_csg_box(Vector3(-half, h * 0.5, 0), Vector3(1.0, h, size + 1.0), wall)
+	_csg_box(Vector3(half, h * 0.5, 0), Vector3(1.0, h, size + 1.0), wall)
 
 
 func _ramps() -> void:
 	## Three side-by-side ramps: 15°, 30°, 45°. Walk up and down to feel
 	## ground friction, air-control, and slope-launch differences.
 	var origin_x := 8.0
-	var z0 := -32.0
+	var z0 := -18.0 if Layouts.is_tight(layout) else -32.0
 	var spacing := RAMP_WIDTH + 2.0
 	var colors := [
 		Color(0.22, 0.55, 0.28),
@@ -212,37 +222,53 @@ func _gap_course() -> void:
 	_ramp_polygon(Vector3(x - PLATFORM_SIZE.x * 0.5 - 10.0, 0.0, 6.0), 10.0, rad_to_deg(atan(PLATFORM_HEIGHT / 10.0)), PLATFORM_SIZE.x, 0.0, Color(0.2, 0.36, 0.7))
 
 
+func _tight_upper() -> void:
+	## Two-level catwalk ring for the compact map.
+	var plat := _grid_mat(Color(0.28, 0.24, 0.2), Color(0.4, 0.34, 0.28))
+	_csg_box(Vector3(0, 6.0, 18), Vector3(24, 0.4, 5), plat)
+	_csg_box(Vector3(0, 6.0, -18), Vector3(24, 0.4, 5), plat)
+	_csg_box(Vector3(18, 6.0, 0), Vector3(5, 0.4, 24), plat)
+	_csg_box(Vector3(-18, 6.0, 0), Vector3(5, 0.4, 24), plat)
+	for xz in [Vector3(18, 6.0, 18), Vector3(-18, 6.0, 18), Vector3(18, 6.0, -18), Vector3(-18, 6.0, -18)]:
+		_csg_box(xz, Vector3(6, 0.4, 6), plat)
+	_ramp_polygon(Vector3(4.0, 0.0, 18.0), 12.0, rad_to_deg(atan(6.0 / 12.0)), 3.2, 90.0, Color(0.36, 0.22, 0.1))
+	_ramp_polygon(Vector3(-4.0, 0.0, -18.0), 12.0, rad_to_deg(atan(6.0 / 12.0)), 3.2, -90.0, Color(0.36, 0.22, 0.1))
+	_item(Vector3(18, 7.3, 18), Pickup.Kind.RAIL, 25.0)
+	_item(Vector3(-18, 7.3, -18), Pickup.Kind.ARMOR, 20.0)
+
+
 func _hallway() -> void:
 	## Narrow enclosed corridor along +X. Sprint / bhop through it to judge
 	## speed perception and the player's dynamic FOV ceiling.
 	var wall_mat := _grid_mat(Color(0.45, 0.16, 0.12), Color(0.62, 0.22, 0.16))
 	var ceil_mat := _grid_mat(Color(0.12, 0.12, 0.14), Color(0.2, 0.2, 0.22))
 	var floor_mat := _grid_mat(Color(0.55, 0.5, 0.18), Color(0.75, 0.68, 0.22))
-	var z := 36.0
+	var z := 18.0 if Layouts.is_tight(layout) else 36.0
 	var x_mid := 0.0
 	var half_w := HALLWAY_WIDTH * 0.5
+	var hall_len := 36.0 if Layouts.is_tight(layout) else HALLWAY_LENGTH
 	# Distinct floor stripe so the corridor reads as a speed trap.
-	_csg_box(Vector3(x_mid, 0.06, z), Vector3(HALLWAY_LENGTH, 0.12, HALLWAY_WIDTH), floor_mat)
+	_csg_box(Vector3(x_mid, 0.06, z), Vector3(hall_len, 0.12, HALLWAY_WIDTH), floor_mat)
 	# Walls
 	_csg_box(
 		Vector3(x_mid, HALLWAY_HEIGHT * 0.5, z - half_w - 0.25),
-		Vector3(HALLWAY_LENGTH, HALLWAY_HEIGHT, 0.5),
+		Vector3(hall_len, HALLWAY_HEIGHT, 0.5),
 		wall_mat
 	)
 	_csg_box(
 		Vector3(x_mid, HALLWAY_HEIGHT * 0.5, z + half_w + 0.25),
-		Vector3(HALLWAY_LENGTH, HALLWAY_HEIGHT, 0.5),
+		Vector3(hall_len, HALLWAY_HEIGHT, 0.5),
 		wall_mat
 	)
 	# Ceiling
 	_csg_box(
 		Vector3(x_mid, HALLWAY_HEIGHT + 0.15, z),
-		Vector3(HALLWAY_LENGTH, 0.3, HALLWAY_WIDTH + 1.0),
+		Vector3(hall_len, 0.3, HALLWAY_WIDTH + 1.0),
 		ceil_mat
 	)
 	# Far cap
 	_csg_box(
-		Vector3(HALLWAY_LENGTH * 0.5 - 0.25, HALLWAY_HEIGHT * 0.5, z),
+		Vector3(hall_len * 0.5 - 0.25, HALLWAY_HEIGHT * 0.5, z),
 		Vector3(0.5, HALLWAY_HEIGHT, HALLWAY_WIDTH + 1.0),
 		wall_mat
 	)
@@ -257,6 +283,11 @@ func _cover() -> void:
 func _jump_pads() -> void:
 	# Vertical pop — rocket-jump alternative / height check.
 	_add_pad(Vector3(0.0, 0.08, 0.0), Vector3(0, 22, 0), 0.0)
+	if Layouts.is_tight(layout):
+		_add_pad(Vector3(-12.0, 0.08, -4.0), Vector3(-4, 14, 8), 0.0)
+		_add_pad(Vector3(-16.0, 0.08, 18.0), Vector3(14, 8, 0), 0.0)
+		_add_pad(Vector3(16.0, 6.2, 16.0), Vector3(0, 14, 0), 0.0)
+		return
 	# Aimed at the gap course start.
 	_add_pad(Vector3(-18.0, 0.08, -4.0), Vector3(-8, 14, 10), 0.0)
 	# Hallway injector: long, low launch so you enter already at speed.
@@ -296,9 +327,11 @@ func _pickups() -> void:
 	_item(Vector3(-16, 1.2, 16), Pickup.Kind.SHOTGUN, 15.0)
 	_item(Vector3(16, 1.2, -16), Pickup.Kind.RAIL, 25.0)
 	_item(Vector3(-16, 1.2, -16), Pickup.Kind.ARMOR, 20.0)
-	_item(Vector3(10, 1.2, 36), Pickup.Kind.RL_AMMO, 15.0)
-	_item(Vector3(-10, 1.2, 36), Pickup.Kind.HEALTH, 10.0)
-	_item(Vector3(-30, PLATFORM_HEIGHT + 1.2, 6), Pickup.Kind.MG_AMMO, 10.0)
+	var hall_z := 18.0 if Layouts.is_tight(layout) else 36.0
+	_item(Vector3(10, 1.2, hall_z), Pickup.Kind.RL_AMMO, 15.0)
+	_item(Vector3(-10, 1.2, hall_z), Pickup.Kind.HEALTH, 10.0)
+	if not Layouts.is_tight(layout):
+		_item(Vector3(-30, PLATFORM_HEIGHT + 1.2, 6), Pickup.Kind.MG_AMMO, 10.0)
 
 
 func _item(pos: Vector3, kind: Pickup.Kind, respawn: float) -> void:
@@ -332,11 +365,19 @@ func _neutrals() -> void:
 
 
 func _spawns() -> void:
-	var pts := [
-		Vector3(40, 1.2, 40), Vector3(-40, 1.2, 40), Vector3(40, 1.2, -40),
-		Vector3(-40, 1.2, -40), Vector3(0, 1.2, 20), Vector3(0, 1.2, -20),
-		Vector3(24, 1.2, 0), Vector3(-24, 1.2, 0),
-	]
+	var pts: Array
+	if Layouts.is_tight(layout):
+		pts = [
+			Vector3(22, 1.2, 22), Vector3(-22, 1.2, 22), Vector3(22, 1.2, -22),
+			Vector3(-22, 1.2, -22), Vector3(0, 1.2, 14), Vector3(0, 1.2, -14),
+			Vector3(18, 7.4, 0), Vector3(-18, 7.4, 0),
+		]
+	else:
+		pts = [
+			Vector3(40, 1.2, 40), Vector3(-40, 1.2, 40), Vector3(40, 1.2, -40),
+			Vector3(-40, 1.2, -40), Vector3(0, 1.2, 20), Vector3(0, 1.2, -20),
+			Vector3(24, 1.2, 0), Vector3(-24, 1.2, 0),
+		]
 	for p in pts:
 		var m := Marker3D.new()
 		m.position = p
@@ -345,10 +386,17 @@ func _spawns() -> void:
 
 
 func _nav_points() -> void:
-	var pts := [
-		Vector3(20, 1, 20), Vector3(-20, 1, 20), Vector3(20, 1, -20), Vector3(-20, 1, -20),
-		Vector3(0, 1, 0), Vector3(-30, 5, 20), Vector3(20, 4, -20), Vector3(0, 1, 36),
-	]
+	var pts: Array
+	if Layouts.is_tight(layout):
+		pts = [
+			Vector3(16, 1, 16), Vector3(-16, 1, 16), Vector3(16, 1, -16), Vector3(-16, 1, -16),
+			Vector3(0, 1, 0), Vector3(18, 7, 0), Vector3(-18, 7, 0), Vector3(0, 7, 18),
+		]
+	else:
+		pts = [
+			Vector3(20, 1, 20), Vector3(-20, 1, 20), Vector3(20, 1, -20), Vector3(-20, 1, -20),
+			Vector3(0, 1, 0), Vector3(-30, 5, 20), Vector3(20, 4, -20), Vector3(0, 1, 36),
+		]
 	for p in pts:
 		var m := Marker3D.new()
 		m.position = p
@@ -371,6 +419,9 @@ func _lights() -> void:
 
 
 func _labels() -> void:
+	if Layouts.is_tight(layout):
+		_billboard(Vector3(0.0, 8.5, 18.0), "UPPER")
+		return
 	_billboard(Vector3(8.0 + RAMP_RUN * 0.5, 2.4, -32.0), "15° RAMP")
 	_billboard(Vector3(8.0 + RAMP_RUN * 0.5, 4.0, -24.0), "30° RAMP")
 	_billboard(Vector3(8.0 + RAMP_RUN * 0.5, 6.0, -16.0), "45° RAMP")

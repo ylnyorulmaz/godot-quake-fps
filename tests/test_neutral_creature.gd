@@ -15,6 +15,7 @@ func _run() -> void:
 	failed += _test_ignores_pickups()
 	failed += _test_nearest_and_melee()
 	failed += _test_dies()
+	failed += _test_has_nav_agent()
 	if failed > 0:
 		push_error("neutral creature tests failed: %d" % failed)
 		quit(1)
@@ -108,6 +109,26 @@ func _test_dies() -> int:
 		push_error("100 damage should kill a 100 HP creature")
 		return 1
 	print("ok   dies at 0 HP")
+	return 0
+
+
+func _test_has_nav_agent() -> int:
+	var c = _make_creature(Vector3.ZERO)
+	var agent = c.get_node_or_null("NavigationAgent3D")
+	if agent == null:
+		push_error("NeutralCreature should own a NavigationAgent3D")
+		return 1
+	if not c.has_method("_chase_velocity"):
+		push_error("expected _chase_velocity for nav fallback")
+		return 1
+	var dummy := _dummy("player", "NavPlayer", Vector3(8, 0, 0))
+	var wish: Vector3 = c._chase_velocity(dummy, 8.0, 0.2)
+	if wish.length() < 0.5:
+		push_error("straight-line fallback should still chase, got %s" % wish)
+		return 1
+	print("ok   NavigationAgent3D + chase fallback")
+	c.queue_free()
+	dummy.queue_free()
 	return 0
 
 

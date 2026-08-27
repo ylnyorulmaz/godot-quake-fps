@@ -5,15 +5,24 @@ signal match_ended
 signal scores_changed
 
 const PLAYER_NAME := "YOU"
+const SENS_LOW := 0.0014
+const SENS_MED := 0.0024
+const SENS_HIGH := 0.0036
+const LAYOUT_YARD := 0
+const LAYOUT_TIGHT := 1
 
 var match_running := false
 var paused := false
-var mouse_sensitivity := 0.0024
+var mouse_sensitivity := SENS_MED
 var player_kills := 0
 var player_deaths := 0
 var bot_kills: Dictionary = {}
 var bot_deaths: Dictionary = {}
 var frag_limit := 20
+var time_limit := 0.0
+var match_time := 0.0
+var ended_by_time := false
+var arena_layout := LAYOUT_YARD
 var last_winner := ""
 
 
@@ -25,6 +34,8 @@ func reset_match() -> void:
 	last_winner = ""
 	match_running = false
 	paused = false
+	match_time = 0.0
+	ended_by_time = false
 	scores_changed.emit()
 
 
@@ -57,6 +68,46 @@ func _maybe_end_match(killer_name: String, is_player_killer: bool) -> void:
 		last_winner = PLAYER_NAME
 	match_running = false
 	match_ended.emit()
+
+
+func tick_clock(delta: float) -> void:
+	if not match_running or paused:
+		return
+	if time_limit <= 0.0:
+		return
+	match_time += delta
+	if match_time >= time_limit:
+		_end_by_time()
+
+
+func _process(delta: float) -> void:
+	tick_clock(delta)
+
+
+func _end_by_time() -> void:
+	if not match_running:
+		return
+	ended_by_time = true
+	var rows: Array = standings()
+	if rows.is_empty():
+		last_winner = PLAYER_NAME
+	else:
+		last_winner = str(rows[0]["name"])
+	match_running = false
+	match_ended.emit()
+
+
+func remaining_time() -> float:
+	if time_limit <= 0.0:
+		return 0.0
+	return maxf(time_limit - match_time, 0.0)
+
+
+func clock_text() -> String:
+	if time_limit <= 0.0:
+		return ""
+	var left := int(ceili(remaining_time()))
+	return "%d:%02d" % [int(left / 60), left % 60]
 
 
 func winner_frags() -> int:
@@ -108,4 +159,6 @@ func _pad_name(n: String, width: int) -> String:
 func start_match() -> void:
 	match_running = true
 	paused = false
+	match_time = 0.0
+	ended_by_time = false
 	match_started.emit()

@@ -11,6 +11,7 @@ var _ammo: Label
 var _weapon: Label
 var _speedo: Label
 var _score: Label
+var _clock: Label
 var _cross: Control
 var _strafe: StrafeHelper
 var _hurt: ColorRect
@@ -108,6 +109,14 @@ func _ready() -> void:
 	_score.offset_right = 420.0
 	_score.offset_top = 16.0
 	_score.offset_bottom = 48.0
+
+	_clock = _label(22, Color(0.95, 0.85, 0.4), HORIZONTAL_ALIGNMENT_RIGHT)
+	_clock.name = "Clock"
+	_clock.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_clock.offset_left = -220.0
+	_clock.offset_right = -16.0
+	_clock.offset_top = 16.0
+	_clock.offset_bottom = 48.0
 
 	_hint = _label(16, Color(0.6, 0.6, 0.55), HORIZONTAL_ALIGNMENT_LEFT)
 	_hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
@@ -240,6 +249,13 @@ func _process(delta: float) -> void:
 		_power.text = player.power_status_text()
 		_power.visible = not _power.text.is_empty()
 	_cross.queue_redraw()
+	if _clock:
+		var gs := get_node_or_null("/root/GameState")
+		var clock := ""
+		if gs != null and gs.has_method("clock_text"):
+			clock = str(gs.call("clock_text"))
+		_clock.text = clock
+		_clock.visible = not clock.is_empty()
 	_scoreboard.visible = Input.is_action_pressed("scoreboard")
 	if _scoreboard.visible:
 		_scoreboard.text = _board_text()
@@ -252,7 +268,10 @@ func _refresh_score() -> void:
 func _board_text() -> String:
 	var gs := get_node_or_null("/root/GameState")
 	if gs != null and gs.has_method("scoreboard_text"):
-		var head := "SCOREBOARD  ·  first to %d\n\n" % int(gs.get("frag_limit"))
+		var head := "SCOREBOARD  ·  first to %d" % int(gs.get("frag_limit"))
+		if float(gs.get("time_limit")) > 0.0 and gs.has_method("clock_text"):
+			head += "  ·  %s" % str(gs.call("clock_text"))
+		head += "\n\n"
 		return head + str(gs.call("scoreboard_text"))
 	var lines := ["SCOREBOARD  ·  first to %d" % GameState.frag_limit, ""]
 	lines.append("YOU    %d" % GameState.player_kills)
