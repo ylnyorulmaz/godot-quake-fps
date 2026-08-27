@@ -30,8 +30,9 @@ func _test_default_multiplier() -> int:
 func _test_easy_scales_values() -> int:
 	var gm = GameManagerScript.new()
 	gm.difficulty_multiplier = 0.5
-	var health := 100.0 * gm.difficulty_multiplier
-	var damage := 7.0 * gm.difficulty_multiplier
+	var mul: float = float(gm.difficulty_multiplier)
+	var health: float = 100.0 * mul
+	var damage: float = 7.0 * mul
 	if absf(health - 50.0) > 0.01 or absf(damage - 3.5) > 0.01:
 		push_error("0.5 multiplier should halve 100 HP and 7 dmg, got %s %s" % [health, damage])
 		return 1
