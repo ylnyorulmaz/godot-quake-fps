@@ -59,15 +59,14 @@ func apply(speed: float, airborne: bool, delta: float) -> void:
 	if not _bound or tree == null or playback == null:
 		return
 	var dt := delta if delta > 0.0 else 0.016
-	var target := clampf(speed, 0.0, run_speed)
-	_blend = lerpf(_blend, target, 1.0 - exp(-blend_sharpness * dt))
+	var speed_target := clampf(speed, 0.0, run_speed)
+	_blend = lerpf(_blend, speed_target, 1.0 - exp(-blend_sharpness * dt))
 	tree.set("parameters/Grounded/blend_position", _blend)
 	var current := String(playback.get_current_node())
-	if _has_jump and airborne:
-		if current != "Air":
-			playback.travel("Air")
-	elif current != "Grounded" and current != "Start":
-		playback.travel("Grounded")
+	var state_target := "Air" if _has_jump and airborne else "Grounded"
+	if current != state_target:
+		playback.travel(state_target)
+	tree.advance(dt)
 
 
 func current_state() -> String:
@@ -106,6 +105,8 @@ func _build_tree() -> void:
 		var to_land := _transition(land_xfade)
 		sm.add_transition("Grounded", "Air", to_air)
 		sm.add_transition("Air", "Grounded", to_land)
+		sm.add_transition("Start", "Air", _transition(0.0))
+		sm.add_transition("Start", "Air", _transition(0.0))
 
 	if tree != null and is_instance_valid(tree):
 		tree.queue_free()
@@ -114,10 +115,12 @@ func _build_tree() -> void:
 	add_child(tree)
 	tree.tree_root = sm
 	tree.anim_player = tree.get_path_to(_player)
+	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	tree.active = true
 	playback = tree.get("parameters/playback") as AnimationNodeStateMachinePlayback
 	if playback:
 		playback.start("Grounded")
+	tree.advance(0.016)
 
 
 func _make_blend_space() -> AnimationNodeBlendSpace1D:
@@ -126,18 +129,18 @@ func _make_blend_space() -> AnimationNodeBlendSpace1D:
 	blend.max_space = run_speed
 	var idle := AnimationNodeAnimation.new()
 	idle.animation = StringName(_clips["idle"])
-	blend.add_blend_point(idle, 0.0)
+	blend.add_blend_point(idle, 0.0, -1, StringName("idle"))
 	var walk := AnimationNodeAnimation.new()
 	walk.animation = StringName(_clips["walk"])
-	blend.add_blend_point(walk, walk_speed)
+	blend.add_blend_point(walk, walk_speed, -1, StringName("walk"))
 	if _clips.has("run"):
 		var run := AnimationNodeAnimation.new()
 		run.animation = StringName(_clips["run"])
-		blend.add_blend_point(run, run_speed)
+		blend.add_blend_point(run, run_speed, -1, StringName("run"))
 	else:
 		var walk_fast := AnimationNodeAnimation.new()
 		walk_fast.animation = StringName(_clips["walk"])
-		blend.add_blend_point(walk_fast, run_speed)
+		blend.add_blend_point(walk_fast, run_speed, -1, StringName("walk_fast"))
 	return blend
 
 

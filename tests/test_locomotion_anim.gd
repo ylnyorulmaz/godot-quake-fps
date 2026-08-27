@@ -81,11 +81,11 @@ func _test_blend_and_jump() -> int:
 	if loco.blend_position() < 6.0:
 		push_error("run blend did not ease toward 8, got %.2f" % loco.blend_position())
 		return 1
-	loco.apply(1.0, true, 0.05)
+	loco.apply(1.0, true, 0.2)
 	if loco.current_state() != "Air":
 		push_error("expected Air after jump, got %s" % loco.current_state())
 		return 1
-	loco.apply(1.0, false, 0.05)
+	loco.apply(1.0, false, 0.25)
 	if loco.current_state() != "Grounded":
 		push_error("expected Grounded after land, got %s" % loco.current_state())
 		return 1
