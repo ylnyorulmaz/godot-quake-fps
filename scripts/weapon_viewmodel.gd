@@ -1,6 +1,8 @@
 class_name WeaponViewmodel
 extends RefCounted
 ## First-person guns from primitives + WeaponSkin. No GLB assets.
+## Chunky Quake-style silhouettes: chaingun cluster, super shotgun,
+## boxy rocket tubes, coiled rail.
 
 const SkinGen := preload("res://scripts/weapon_skin.gd")
 
@@ -21,48 +23,110 @@ static func build(weapon_id: String) -> Node3D:
 
 
 static func _machinegun(root: Node3D) -> void:
-	var steel := SkinGen.steel(11)
-	var mag := SkinGen.blued(19)
-	_box(root, Vector3(0.09, 0.1, 0.28), Vector3(0.0, 0.0, -0.04), steel)
-	_cyl(root, 0.02, 0.38, Vector3(0.0, 0.02, -0.32), steel)
-	_box(root, Vector3(0.05, 0.14, 0.09), Vector3(0.0, -0.1, 0.02), mag)
-	_box(root, Vector3(0.07, 0.07, 0.16), Vector3(0.0, -0.02, 0.18), steel)
-	_box(root, Vector3(0.03, 0.04, 0.08), Vector3(0.0, 0.07, -0.02), steel)
+	var steel: StandardMaterial3D = SkinGen.steel(11)
+	var blued: StandardMaterial3D = SkinGen.blued(19)
+	var brass: StandardMaterial3D = SkinGen.brass(53)
+	var rubber: StandardMaterial3D = SkinGen.grip(31)
+	var hot: StandardMaterial3D = SkinGen.heat(13)
+	# Receiver
+	_box(root, Vector3(0.11, 0.12, 0.34), Vector3(0.0, 0.02, -0.02), steel)
+	_box(root, Vector3(0.09, 0.08, 0.16), Vector3(0.0, 0.01, 0.2), blued)
+	# Barrel shroud + six-barrel cluster
+	_cyl(root, 0.055, 0.048, 0.22, Vector3(0.0, 0.04, -0.28), steel)
+	for i in 6:
+		var ang := float(i) * TAU / 6.0
+		var ox := cos(ang) * 0.028
+		var oy := 0.04 + sin(ang) * 0.028
+		_cyl(root, 0.011, 0.011, 0.4, Vector3(ox, oy, -0.42), blued)
+	_cyl(root, 0.016, 0.016, 0.08, Vector3(0.0, 0.04, -0.64), brass)
+	_disc(root, 0.03, Vector3(0.0, 0.04, -0.69), hot)
+	# Ammo box + belt
+	_box(root, Vector3(0.08, 0.12, 0.16), Vector3(0.1, -0.02, 0.04), blued)
+	_box(root, Vector3(0.03, 0.03, 0.12), Vector3(0.07, 0.04, -0.08), brass)
+	for i in 5:
+		_box(root, Vector3(0.018, 0.014, 0.022), Vector3(0.09, 0.05, -0.02 - float(i) * 0.028), brass)
+	# Grip, stock, sights
+	_box(root, Vector3(0.045, 0.12, 0.05), Vector3(0.0, -0.1, 0.12), rubber)
+	_box(root, Vector3(0.04, 0.035, 0.14), Vector3(0.0, -0.04, 0.28), rubber)
+	_box(root, Vector3(0.02, 0.05, 0.08), Vector3(0.0, 0.1, -0.06), steel)
+	_box(root, Vector3(0.012, 0.03, 0.012), Vector3(0.0, 0.14, -0.08), brass)
 
 
 static func _shotgun(root: Node3D) -> void:
-	var wood := SkinGen.wood(41)
-	var metal := SkinGen.blued(5)
-	_box(root, Vector3(0.07, 0.08, 0.22), Vector3(0.0, -0.01, 0.16), wood)
-	_box(root, Vector3(0.08, 0.09, 0.18), Vector3(0.0, 0.0, -0.02), metal)
-	_cyl(root, 0.018, 0.42, Vector3(0.018, 0.02, -0.28), metal)
-	_cyl(root, 0.018, 0.42, Vector3(-0.018, 0.02, -0.28), metal)
-	_box(root, Vector3(0.05, 0.04, 0.12), Vector3(0.0, -0.05, -0.08), metal)
-	_box(root, Vector3(0.04, 0.1, 0.04), Vector3(0.0, -0.08, 0.12), wood)
+	var wood: StandardMaterial3D = SkinGen.wood(41)
+	var metal: StandardMaterial3D = SkinGen.blued(5)
+	var brass: StandardMaterial3D = SkinGen.brass(8)
+	var rubber: StandardMaterial3D = SkinGen.grip(31)
+	# Dual barrels
+	_cyl(root, 0.02, 0.02, 0.52, Vector3(0.022, 0.03, -0.3), metal)
+	_cyl(root, 0.02, 0.02, 0.52, Vector3(-0.022, 0.03, -0.3), metal)
+	_cyl(root, 0.024, 0.024, 0.04, Vector3(0.022, 0.03, -0.56), brass)
+	_cyl(root, 0.024, 0.024, 0.04, Vector3(-0.022, 0.03, -0.56), brass)
+	# Receiver + pump
+	_box(root, Vector3(0.09, 0.1, 0.2), Vector3(0.0, 0.01, -0.02), metal)
+	_box(root, Vector3(0.07, 0.06, 0.16), Vector3(0.0, -0.02, -0.2), wood)
+	_box(root, Vector3(0.055, 0.045, 0.1), Vector3(0.0, -0.05, -0.18), rubber)
+	# Stock
+	_box(root, Vector3(0.07, 0.08, 0.18), Vector3(0.0, -0.01, 0.18), wood)
+	_box(root, Vector3(0.08, 0.11, 0.06), Vector3(0.0, -0.02, 0.3), wood)
+	_box(root, Vector3(0.09, 0.12, 0.03), Vector3(0.0, -0.01, 0.35), rubber)
+	# Trigger, rib, bead
+	_box(root, Vector3(0.04, 0.05, 0.08), Vector3(0.0, -0.07, 0.06), metal)
+	_box(root, Vector3(0.012, 0.012, 0.36), Vector3(0.0, 0.07, -0.18), brass)
+	_cyl(root, 0.008, 0.008, 0.02, Vector3(0.0, 0.08, -0.54), brass)
 
 
 static func _rocket(root: Node3D) -> void:
-	var rust := SkinGen.rust(7)
-	var steel := SkinGen.steel(3)
-	_cyl(root, 0.07, 0.52, Vector3(0.0, 0.02, -0.12), rust)
-	_cyl(root, 0.085, 0.1, Vector3(0.0, 0.02, -0.4), rust)
-	_box(root, Vector3(0.06, 0.12, 0.1), Vector3(0.0, -0.08, 0.08), steel)
-	_box(root, Vector3(0.04, 0.04, 0.14), Vector3(0.0, -0.04, 0.2), steel)
-	_box(root, Vector3(0.12, 0.02, 0.08), Vector3(0.0, 0.08, -0.22), rust)
+	var rust: StandardMaterial3D = SkinGen.rust(7)
+	var steel: StandardMaterial3D = SkinGen.steel(3)
+	var stripe: StandardMaterial3D = SkinGen.caution(17)
+	var rubber: StandardMaterial3D = SkinGen.grip(31)
+	var hot: StandardMaterial3D = SkinGen.heat(13)
+	# Twin tubes
+	_cyl(root, 0.055, 0.055, 0.48, Vector3(0.0, 0.05, -0.16), rust)
+	_cyl(root, 0.038, 0.038, 0.4, Vector3(0.0, 0.12, -0.12), steel)
+	_cyl(root, 0.07, 0.05, 0.1, Vector3(0.0, 0.05, -0.42), rust)
+	_cyl(root, 0.048, 0.03, 0.08, Vector3(0.0, 0.05, -0.5), hot)
+	_box(root, Vector3(0.12, 0.04, 0.08), Vector3(0.0, 0.05, -0.22), stripe)
+	# Body, grip, shoulder
+	_box(root, Vector3(0.12, 0.14, 0.22), Vector3(0.0, -0.02, 0.1), steel)
+	_box(root, Vector3(0.05, 0.12, 0.05), Vector3(0.0, -0.12, 0.08), rubber)
+	_box(root, Vector3(0.04, 0.04, 0.16), Vector3(0.0, -0.06, 0.24), rubber)
+	_box(root, Vector3(0.1, 0.08, 0.04), Vector3(0.0, 0.02, 0.24), rust)
+	# Sights + side vents
+	_box(root, Vector3(0.03, 0.04, 0.1), Vector3(0.0, 0.16, 0.02), steel)
+	_box(root, Vector3(0.016, 0.03, 0.016), Vector3(0.0, 0.19, -0.02), rust)
+	_box(root, Vector3(0.02, 0.06, 0.08), Vector3(0.08, 0.02, 0.04), stripe)
+	_box(root, Vector3(0.02, 0.06, 0.08), Vector3(-0.08, 0.02, 0.04), stripe)
+	_light(root, Color(1.0, 0.35, 0.08), 0.9, Vector3(0.0, 0.05, -0.48))
 
 
 static func _rail(root: Node3D) -> void:
-	var steel := SkinGen.blued(61)
-	var glow := SkinGen.energy(99)
-	_box(root, Vector3(0.07, 0.08, 0.22), Vector3(0.0, 0.0, 0.08), steel)
-	_cyl(root, 0.016, 0.62, Vector3(0.0, 0.02, -0.28), glow)
-	_ring(root, 0.04, 0.012, Vector3(0.0, 0.02, -0.18), glow)
-	_ring(root, 0.04, 0.012, Vector3(0.0, 0.02, -0.32), glow)
-	_ring(root, 0.04, 0.012, Vector3(0.0, 0.02, -0.46), glow)
-	_box(root, Vector3(0.05, 0.1, 0.06), Vector3(0.0, -0.08, 0.1), steel)
+	var steel: StandardMaterial3D = SkinGen.blued(61)
+	var glow: StandardMaterial3D = SkinGen.energy(99)
+	var rubber: StandardMaterial3D = SkinGen.grip(31)
+	var brass: StandardMaterial3D = SkinGen.brass(21)
+	# Receiver + stock
+	_box(root, Vector3(0.08, 0.09, 0.24), Vector3(0.0, 0.01, 0.1), steel)
+	_box(root, Vector3(0.06, 0.08, 0.16), Vector3(0.0, -0.01, 0.26), rubber)
+	_box(root, Vector3(0.045, 0.11, 0.05), Vector3(0.0, -0.1, 0.12), rubber)
+	# Glowing core and coils
+	_cyl(root, 0.014, 0.014, 0.72, Vector3(0.0, 0.03, -0.28), glow)
+	for i in 5:
+		var z := -0.08 - float(i) * 0.1
+		_ring(root, 0.042, 0.01, Vector3(0.0, 0.03, z), glow)
+	# Muzzle prongs
+	_box(root, Vector3(0.012, 0.07, 0.08), Vector3(0.03, 0.03, -0.62), steel)
+	_box(root, Vector3(0.012, 0.07, 0.08), Vector3(-0.03, 0.03, -0.62), steel)
+	_disc(root, 0.022, Vector3(0.0, 0.03, -0.66), glow)
+	# Energy cell + rails
+	_box(root, Vector3(0.05, 0.07, 0.09), Vector3(0.07, 0.0, 0.06), glow)
+	_box(root, Vector3(0.02, 0.02, 0.28), Vector3(0.0, 0.08, -0.06), brass)
+	_box(root, Vector3(0.03, 0.03, 0.06), Vector3(0.0, 0.1, 0.08), steel)
+	_light(root, Color(0.2, 0.85, 1.0), 1.2, Vector3(0.0, 0.03, -0.4))
 
 
-static func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
+static func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
@@ -71,33 +135,61 @@ static func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> 
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
+	return mi
 
 
-static func _cyl(parent: Node3D, radius: float, length: float, pos: Vector3, mat: Material) -> void:
+static func _cyl(parent: Node3D, r_top: float, r_bot: float, length: float, pos: Vector3, mat: Material) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius
-	mesh.bottom_radius = radius
+	mesh.top_radius = r_top
+	mesh.bottom_radius = r_bot
 	mesh.height = length
-	mesh.radial_segments = 8
+	mesh.radial_segments = 12
 	mi.mesh = mesh
 	mi.position = pos
 	mi.rotation_degrees.x = 90.0
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
+	return mi
 
 
-static func _ring(parent: Node3D, radius: float, thickness: float, pos: Vector3, mat: Material) -> void:
+static func _ring(parent: Node3D, radius: float, thickness: float, pos: Vector3, mat: Material) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var mesh := TorusMesh.new()
-	mesh.inner_radius = radius - thickness
+	mesh.inner_radius = maxf(radius - thickness, 0.004)
 	mesh.outer_radius = radius
-	mesh.rings = 8
-	mesh.ring_segments = 8
+	mesh.rings = 10
+	mesh.ring_segments = 10
 	mi.mesh = mesh
 	mi.position = pos
 	mi.rotation_degrees.x = 90.0
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
+	return mi
+
+
+static func _disc(parent: Node3D, radius: float, pos: Vector3, mat: Material) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 0.55
+	mesh.radial_segments = 10
+	mesh.rings = 6
+	mi.mesh = mesh
+	mi.position = pos
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+	return mi
+
+
+static func _light(parent: Node3D, color: Color, energy: float, pos: Vector3) -> void:
+	var light := OmniLight3D.new()
+	light.light_color = color
+	light.light_energy = energy
+	light.omni_range = 0.55
+	light.shadow_enabled = false
+	light.position = pos
+	parent.add_child(light)

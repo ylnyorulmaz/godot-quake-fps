@@ -44,6 +44,32 @@ static func rust(seed: int = 7) -> StandardMaterial3D:
 	, 0.55, 0.48)
 
 
+static func brass(seed: int = 53) -> StandardMaterial3D:
+	return _cached("brass|%s" % seed, func() -> Image:
+		return _noise_tex(seed, 0.1, [
+			Color("#3a2810"),
+			Color("#8a6a24"),
+			Color("#d4b050"),
+		], true)
+	, 0.82, 0.28)
+
+
+static func grip(seed: int = 31) -> StandardMaterial3D:
+	return _cached("grip|%s" % seed, func() -> Image:
+		return _noise_tex(seed, 0.16, [
+			Color("#121214"),
+			Color("#1c1c20"),
+			Color("#323238"),
+		], false)
+	, 0.04, 0.86)
+
+
+static func caution(seed: int = 17) -> StandardMaterial3D:
+	return _cached("caution|%s" % seed, func() -> Image:
+		return _stripe_tex(Color("#1a1408"), Color("#e8b014"))
+	, 0.12, 0.55)
+
+
 static func energy(seed: int = 99) -> StandardMaterial3D:
 	var mat := _cached("energy|%s" % seed, func() -> Image:
 		return _grid_tex(seed, Color("#062028"), Color("#1ae0ff"))
@@ -51,6 +77,21 @@ static func energy(seed: int = 99) -> StandardMaterial3D:
 	mat.emission_enabled = true
 	mat.emission = Color(0.12, 0.75, 0.95)
 	mat.emission_energy_multiplier = 2.4
+	mat.emission_texture = mat.albedo_texture
+	return mat
+
+
+static func heat(seed: int = 13) -> StandardMaterial3D:
+	var mat := _cached("heat|%s" % seed, func() -> Image:
+		return _noise_tex(seed, 0.14, [
+			Color("#2a0800"),
+			Color("#c04008"),
+			Color("#ffb030"),
+		], false)
+	, 0.2, 0.35)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.4, 0.08)
+	mat.emission_energy_multiplier = 2.8
 	mat.emission_texture = mat.albedo_texture
 	return mat
 
@@ -129,4 +170,13 @@ static func _grid_tex(seed: int, bg: Color, line: Color) -> Image:
 			if d > 0.72:
 				c = line
 			img.set_pixel(x, y, c)
+	return img
+
+
+static func _stripe_tex(a: Color, b: Color) -> Image:
+	var img := Image.create(SIZE, SIZE, false, Image.FORMAT_RGBA8)
+	for y in SIZE:
+		for x in SIZE:
+			var band := posmod(x + y, 16) < 8
+			img.set_pixel(x, y, b if band else a)
 	return img
