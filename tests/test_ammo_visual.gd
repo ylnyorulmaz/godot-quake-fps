@@ -17,6 +17,7 @@ func _run() -> void:
 	failed += _test_weapons_differ_from_ammo()
 	failed += _test_casings_differ()
 	failed += _test_fire_ejects_brass()
+	failed += _test_arena_lists_shells()
 	if failed > 0:
 		push_error("ammo visual tests failed: %d" % failed)
 		quit(1)
@@ -134,6 +135,15 @@ func _test_fire_ejects_brass() -> int:
 	print("ok   MG fire ejects a casing")
 	wm.queue_free()
 	body.queue_free()
+	return 0
+
+
+func _test_arena_lists_shells() -> int:
+	var src := FileAccess.get_file_as_string("res://scripts/arena_generator.gd")
+	if src.is_empty() or not ("SG_AMMO" in src and "RAIL_AMMO" in src):
+		push_error("live arena should spawn shotgun shells and rail slugs")
+		return 1
+	print("ok   live arena places shotgun and rail ammo")
 	return 0
 
 
