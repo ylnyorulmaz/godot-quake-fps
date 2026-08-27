@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cfi7u32tsh3u4"
-path="res://.godot/imported/warrior_2.jpg-563157b9d4b90e3224b02623815d51e8.ctex"
+path.s3tc="res://.godot/imported/warrior_2.jpg-563157b9d4b90e3224b02623815d51e8.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "33ba60ab84cb22cc761028830752568c"
@@ -14,7 +15,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/warrior_2.jpg"
-dest_files=["res://.godot/imported/warrior_2.jpg-563157b9d4b90e3224b02623815d51e8.ctex"]
+dest_files=["res://.godot/imported/warrior_2.jpg-563157b9d4b90e3224b02623815d51e8.s3tc.ctex"]
 
 [params]
 
