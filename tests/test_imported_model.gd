@@ -11,6 +11,7 @@ func _init() -> void:
 	failed += _test_repo_glbs()
 	failed += _test_shipped_glbs_have_no_clips()
 	failed += _test_play_idle()
+	failed += _test_fit_yaw_180()
 	failed += _test_fit_box_height()
 	failed += _test_sanitize_collision()
 	if failed > 0:
@@ -62,6 +63,22 @@ func _test_shipped_glbs_have_no_clips() -> int:
 			push_error("%s imported with unexpected yaw %.3f" % [path, (inst as Node3D).rotation.y])
 			return 1
 	print("ok   shipped GLBs have no clips; identity yaw so bot uses 180")
+	return 0
+
+
+func _test_fit_yaw_180() -> int:
+	for path in ["res://assets/warrior.glb", "res://assets/Warrior2.glb", "res://assets/female.glb"]:
+		var actor := Node3D.new()
+		root.add_child(actor)
+		var packed := load(path) as PackedScene
+		var vis := Imported.instantiate_under(actor, packed, 1.8, 180.0)
+		if vis == null:
+			push_error("instantiate_under failed for %s" % path)
+			return 1
+		if absf(vis.rotation.y - deg_to_rad(180.0)) > 0.02:
+			push_error("%s expected yaw 180, got %.1f deg" % [path, rad_to_deg(vis.rotation.y)])
+			return 1
+	print("ok   warrior / Warrior2 / female visual yaw is 180 for Godot -Z")
 	return 0
 
 
