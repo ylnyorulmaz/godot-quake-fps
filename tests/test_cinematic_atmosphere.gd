@@ -107,3 +107,12 @@ func _test_main_ready_creates_it() -> int:
 		return 1
 	print("ok   main script applies atmosphere on ready")
 	return 0
+
+
+func _test_arena_has_lanterns() -> int:
+	var src := FileAccess.get_file_as_string("res://scripts/arena_generator.gd")
+	if src.find("func _lantern") < 0 or src.find("func _hearth") < 0:
+		push_error("arena should hang industrial lanterns over a molten hearth")
+		return 1
+	print("ok   arena places gothic lanterns and a hearth")
+	return 0
