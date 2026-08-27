@@ -14,6 +14,15 @@ const BOT_MODELS := [
 	"res://assets/Warrior2.glb",
 	"res://assets/female.glb",
 ]
+## Grunt charges, Ranger camps, Visl panics.
+const BOT_PERSONALITIES := [0, 2, 4]
+const PERSONALITY_NAMES := ["Agresif", "Savunmacı", "Sniper", "Normal", "Crazy"]
+
+var _bot_personalities: Array[int] = [0, 2, 4]
+var _personality_btns: Array[Button] = []
+var _diff_easy: Button
+var _diff_normal: Button
+var _diff_hard: Button
 
 
 func _ready() -> void:
@@ -69,9 +78,9 @@ func _build_menu() -> void:
 
 	var col := VBoxContainer.new()
 	col.set_anchors_preset(Control.PRESET_CENTER)
-	col.position = Vector2(-220, -140)
-	col.custom_minimum_size = Vector2(440, 280)
-	col.add_theme_constant_override("separation", 16)
+	col.position = Vector2(-250, -300)
+	col.custom_minimum_size = Vector2(500, 560)
+	col.add_theme_constant_override("separation", 12)
 	_menu.add_child(col)
 
 	var title := Label.new()
@@ -88,6 +97,8 @@ func _build_menu() -> void:
 	sub.add_theme_color_override("font_color", Color(0.8, 0.7, 0.55))
 	col.add_child(sub)
 
+	col.add_child(_build_difficulty_picker())
+	col.add_child(_build_personality_picker())
 	col.add_child(_btn("PLAY", _start_match))
 	col.add_child(_btn("QUIT", func() -> void: get_tree().quit()))
 
@@ -118,6 +129,131 @@ func _btn(text: String, cb: Callable) -> Button:
 	b.custom_minimum_size = Vector2(0, 48)
 	b.pressed.connect(cb)
 	return b
+
+
+func _build_personality_picker() -> Control:
+	_personality_btns.clear()
+	var wrap := VBoxContainer.new()
+	wrap.add_theme_constant_override("separation", 6)
+	var title := Label.new()
+	title.text = "BOT PERSONALITY"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(0.85, 0.72, 0.5))
+	wrap.add_child(title)
+	for i in BOT_COUNT:
+		wrap.add_child(_build_personality_row(i))
+	return wrap
+
+
+func _build_personality_row(index: int) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var name := Label.new()
+	name.text = BOT_NAMES[index]
+	name.custom_minimum_size = Vector2(90, 40)
+	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name.add_theme_font_size_override("font_size", 18)
+	name.add_theme_color_override("font_color", BOT_COLORS[index])
+	row.add_child(name)
+	var prev := _btn("<", _cycle_personality.bind(index, -1))
+	prev.custom_minimum_size = Vector2(44, 40)
+	row.add_child(prev)
+	var value := Button.new()
+	value.text = _personality_name(_bot_personalities[index])
+	value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value.custom_minimum_size = Vector2(0, 40)
+	value.pressed.connect(_cycle_personality.bind(index, 1))
+	row.add_child(value)
+	_personality_btns.append(value)
+	var next := _btn(">", _cycle_personality.bind(index, 1))
+	next.custom_minimum_size = Vector2(44, 40)
+	row.add_child(next)
+	return row
+
+
+func _personality_name(kind: int) -> String:
+	if kind < 0 or kind >= PERSONALITY_NAMES.size():
+		return PERSONALITY_NAMES[3]
+	return PERSONALITY_NAMES[kind]
+
+
+func _cycle_personality(index: int, step: int) -> void:
+	if index < 0 or index >= _bot_personalities.size():
+		return
+	_bot_personalities[index] = posmod(_bot_personalities[index] + step, PERSONALITY_NAMES.size())
+	_refresh_personality_picker()
+
+
+func _refresh_personality_picker() -> void:
+	for i in _personality_btns.size():
+		if i >= _bot_personalities.size():
+			break
+		_personality_btns[i].text = _personality_name(_bot_personalities[i])
+
+
+func _build_difficulty_picker() -> Control:
+	var wrap := VBoxContainer.new()
+	wrap.add_theme_constant_override("separation", 6)
+	var title := Label.new()
+	title.text = "DIFFICULTY"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override("font_color", Color(0.85, 0.72, 0.5))
+	wrap.add_child(title)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	_diff_easy = _btn("EASY", func() -> void: _set_difficulty(0.5))
+	_diff_normal = _btn("NORMAL", func() -> void: _set_difficulty(1.0))
+	_diff_hard = _btn("HARD", func() -> void: _set_difficulty(1.5))
+	for b in [_diff_easy, _diff_normal, _diff_hard]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b)
+	wrap.add_child(row)
+	var hint := Label.new()
+	hint.name = "DiffHint"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 14)
+	hint.add_theme_color_override("font_color", Color(0.62, 0.55, 0.45))
+	wrap.add_child(hint)
+	_refresh_difficulty_picker()
+	return wrap
+
+
+func _difficulty_multiplier() -> float:
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null:
+		return 1.0
+	return float(gm.get("difficulty_multiplier"))
+
+
+func _set_difficulty(mul: float) -> void:
+	var gm := get_node_or_null("/root/GameManager")
+	if gm == null:
+		return
+	gm.set("difficulty_multiplier", mul)
+	_refresh_difficulty_picker()
+
+
+func _refresh_difficulty_picker() -> void:
+	var mul := _difficulty_multiplier()
+	_paint_diff_button(_diff_easy, mul <= 0.6)
+	_paint_diff_button(_diff_normal, mul > 0.6 and mul < 1.4)
+	_paint_diff_button(_diff_hard, mul >= 1.4)
+	if _menu == null:
+		return
+	var hint := _menu.find_child("DiffHint", true, false) as Label
+	if hint:
+		hint.text = "Bot HP & damage  ×  %.1f" % mul
+
+
+func _paint_diff_button(button: Button, selected: bool) -> void:
+	if button == null:
+		return
+	if selected:
+		button.modulate = Color(1.0, 0.58, 0.18)
+	else:
+		button.modulate = Color(0.72, 0.68, 0.6)
 
 
 func _start_match() -> void:
@@ -155,6 +291,7 @@ func _start_match() -> void:
 		bot.bot_name = BOT_NAMES[i]
 		bot.color = BOT_COLORS[i]
 		bot.model_path = BOT_MODELS[i]
+		bot.personality = _bot_personalities[i]
 		bot.name = BOT_NAMES[i]
 		bot.player_path = NodePath("../Player")
 		bot.process_mode = Node.PROCESS_MODE_PAUSABLE

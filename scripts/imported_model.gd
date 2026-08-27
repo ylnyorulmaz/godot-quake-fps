@@ -22,10 +22,12 @@ const DEFAULT_CANDIDATES: PackedStringArray = [
 static func load_packed(explicit: PackedScene = null, path: String = "") -> PackedScene:
 	if explicit != null:
 		return explicit
-	if not path.is_empty() and ResourceLoader.exists(path):
-		var from_path := ResourceLoader.load(path)
-		if from_path is PackedScene:
-			return from_path
+	if not path.is_empty():
+		if ResourceLoader.exists(path):
+			var from_path := ResourceLoader.load(path)
+			if from_path is PackedScene:
+				return from_path
+		return null
 	for candidate in DEFAULT_CANDIDATES:
 		if ResourceLoader.exists(candidate):
 			var loaded := ResourceLoader.load(candidate)

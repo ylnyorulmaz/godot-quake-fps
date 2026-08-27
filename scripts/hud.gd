@@ -16,6 +16,8 @@ var _strafe: StrafeHelper
 var _hurt: ColorRect
 var _scoreboard: Label
 var _hint: Label
+var _power: Label
+var _power_tint: ColorRect
 var _shown_ups := 0.0
 var _flash_tween: Tween
 var _last_health: float = -1.0
@@ -40,6 +42,13 @@ func _ready() -> void:
 	_hurt.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_hurt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_hurt)
+
+	_power_tint = ColorRect.new()
+	_power_tint.name = "PowerTint"
+	_power_tint.color = Color(1.0, 0.2, 0.05, 0.0)
+	_power_tint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_power_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_power_tint)
 
 	_strafe = StrafeHelper.new()
 	_strafe.name = "StrafeHelper"
@@ -107,6 +116,14 @@ func _ready() -> void:
 	_hint.offset_top = -28.0
 	_hint.offset_bottom = -8.0
 	_hint.text = "WASD  mouse  SPACE jump  SHIFT sprint  CTRL crouch  LMB fire  1-4 / wheel  ESC"
+
+	_power = _label(26, Color(1.0, 0.45, 0.2), HORIZONTAL_ALIGNMENT_CENTER)
+	_power.name = "PowerUpStatus"
+	_power.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_power.offset_left = -280.0
+	_power.offset_right = 280.0
+	_power.offset_top = 18.0
+	_power.offset_bottom = 56.0
 
 	_scoreboard = Label.new()
 	_scoreboard.visible = false
@@ -217,6 +234,11 @@ func _process(delta: float) -> void:
 	_shown_ups = lerpf(_shown_ups, target_ups, 1.0 - exp(-14.0 * delta))
 	_speedo.text = "Speed: %d ups" % int(round(_shown_ups))
 	_hurt.color.a = player.hurt_alpha() * 0.45
+	if _power_tint:
+		_power_tint.color = player.power_screen_tint()
+	if _power:
+		_power.text = player.power_status_text()
+		_power.visible = not _power.text.is_empty()
 	_cross.queue_redraw()
 	_scoreboard.visible = Input.is_action_pressed("scoreboard")
 	if _scoreboard.visible:

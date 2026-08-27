@@ -4,6 +4,8 @@ Quake 3 Arena-style movement and a modular weapon manager for **Godot 4.7.2**.
 
 This is original code. It is not affiliated with id Software and does not include Quake assets.
 
+**Product vision** (fantasy races, deathmatch + CTF + PvE mini-maps, FOSS, old PCs, cheap multiplayer server): [PRODUCT.md](PRODUCT.md).
+
 ## Run
 
 1. Install [Godot **4.7.2**](https://godotengine.org/download) (standard build, not an older 4.3/4.4 editor). The project uses the **Compatibility** renderer so it opens on more GPUs.
@@ -56,17 +58,20 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 - Jump pads (`scenes/jump_pad.tscn`) and a respawning Mega-Health (`scenes/mega_health.tscn`)
 - Spawn / nav markers so deathmatch still runs on the same map
 - `NavigationRegion3D` wraps the CSG hull; a navmesh is baked at runtime for bots
-- Surfaces use [`scripts/arena_plate_material.gd`](scripts/arena_plate_material.gd): 256×256 FastNoiseLite **cellular** plates, Quake rust/metal gradient (`#1a1a1a` / `#3a2a20` / `#5a5a5a`), nearest filter, `metallic` 0.6 / `roughness` 0.4, optional normal from plate grooves. Drop the node under a `MeshInstance3D` or call `ArenaPlateMaterial.apply_to(mesh)`.
+- Surfaces use [`scripts/arena_plate_material.gd`](scripts/arena_plate_material.gd): 256×256 FastNoiseLite **cellular** plates, Quake rust/metal gradient (`#1a1a1a` / `#3a2a20` / `#5a5a5a`), nearest filter, optional normal from plate grooves. Drop the node under a `MeshInstance3D` or call `ArenaPlateMaterial.apply_to(mesh)`. Arena lighting is an open sky (no full ceiling), strong ambient, and no directional shadows so the metallic floor stays readable.
 
 ## Combat bots
 
 `EnemyBot` (`scripts/enemy_bot.gd`, `scenes/enemy_bot.tscn`) is a `CharacterBody3D` with `NavigationAgent3D`, a LOS `RayCast3D`, `ShootTimer`, and `HealthComponent`.
 
 - Chases the player via `get_next_path_position()` with acceleration + gravity
-- On line-of-sight, stops following the path and strafes while firing a hitscan (spread from `accuracy_error`)
-- Exports: `movement_speed`, `attack_cooldown`, `vision_range`, `accuracy_error`
+- On line-of-sight, stops following the path and strafes while firing a hitscan (spread from `accuracy_error` degrees)
+- Free-for-all: bots shoot the closest visible foe (player **or** another bot), with revenge on last attacker
+- **Personality** (`int`): `0` Aggressive charges with `move_and_slide`, `1` Defensive kites away, `2` Sniper stands still and fires on LOS, `3` Normal strafe/path, `4` Crazy rushes and jitters. Title screen lets you cycle each bot (Grunt / Ranger / Visl). Default mix: Grunt aggressive, Ranger sniper, Visl crazy
+- **Handicap:** autoload `GameManager.difficulty_multiplier` (default `1.0`). Bot spawn health and hitscan damage are `base * multiplier`. The title screen has **EASY / NORMAL / HARD** (0.5 / 1.0 / 1.5) before Play
+- Exports: `personality`, `movement_speed`, `attack_cooldown`, `vision_range`, `accuracy_error`
 - Missing or dead players are ignored; the bot wanders nav points instead
-- **Custom mesh:** `assets/warrior.glb`, `assets/Warrior2.glb`, `assets/female.glb`. Capsules hide; collision stays the 1.8 m capsule. These GLBs have **no clips**, so bots use a short vertical bob. Drop a rigged GLB with `Idle` / `Walk` / `Run` / `Jump` and [`scripts/locomotion_anim.gd`](scripts/locomotion_anim.gd) builds an AnimationTree (BlendSpace1D on the ground, state-machine xfade to Air). `model_yaw_degrees` default **180**.
+- **Custom mesh:** `assets/warrior.glb`, `assets/Warrior2.glb`, `assets/female.glb`. Capsules hide; collision stays the 1.8 m capsule. These GLBs have **no clips**, so walking uses a stride bob (height + roll). Drop a rigged GLB with `Idle` / `Walk` / `Run` / `Jump` and [`scripts/locomotion_anim.gd`](scripts/locomotion_anim.gd) builds an AnimationTree (BlendSpace1D on the ground, state-machine xfade to Air). `model_yaw_degrees` default **180**.
 
 First to `frag_limit` (20) wins — player or bot. End screen shows `NAME WINS · N frags`.
 
@@ -82,6 +87,18 @@ If a mesh faces the wrong way, set **Model Yaw Degrees** on `EnemyBot` (default 
 
 Mega-Health: +100 HP, clamped to 200, 30s respawn.
 
+## Power-ups
+
+`PowerUp` (`scripts/power_up.gd`) is an `Area3D` cube/prism/sphere on layer 16. Pads on the arena:
+
+| Pickup | Effect | Color |
+| --- | --- | --- |
+| Quad Damage | outgoing damage ×4 for 15s | red |
+| Haste | move speed ×2 for 15s | yellow |
+| Invisibility | translucent body; bots lose LOS beyond ~3.5 m | cyan |
+
+Item **respawns in 30s**. Three pads are fixed; a fourth wild pad relocates to a random nav point and rerolls kind. Player and bots both `apply_power_up`. Active buffs tint the body (and the FPS screen / viewmodel) and show `QUAD 12` on the HUD. Death clears them.
+
 ## HUD
 
 `scripts/hud.gd` is a full-rect `CanvasLayer/Root` so it scales with the window.
@@ -96,6 +113,7 @@ Mega-Health: +100 HP, clamped to 200, 30s respawn.
 
 - **Hitscan** (MG / shotgun / rail): `RayCast3D` from the camera, plus spread pellets. Calls `take_damage` on the hit body and spawns a short 3D trail.
 - **Projectile** (rocket): `scenes/rocket.tscn` from **Muzzle**, aimed at the camera ray point. Sphere query splash + `apply_explosion_knockback` (self-damage scaled).
+- **Viewmodels** are code-built primitives with 128×128 nearest skins ([`scripts/weapon_skin.gd`](scripts/weapon_skin.gd) / [`scripts/weapon_viewmodel.gd`](scripts/weapon_viewmodel.gd)). No GLB or PNG assets.
 
 Switch with **1–4** or the mouse wheel (`next_weapon` / `prev_weapon`). Fire with **LMB** (`fire`).
 

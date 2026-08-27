@@ -1,6 +1,8 @@
 class_name Player
 extends CharacterBody3D
 
+const PowerUpHold := preload("res://scripts/power_up_state.gd")
+
 ## Quake 3 style CharacterBody3D FPS controller.
 ##
 ## Tree:
@@ -83,6 +85,9 @@ var _was_on_floor := false
 var _launch_ignore_frames := 0
 var _move := QuakeMoveParams.new()
 var _last_attacker: Node = null
+var _power
+var _power_overlay: StandardMaterial3D
+var _power_glow: OmniLight3D
 
 
 func _ready() -> void:
@@ -155,6 +160,17 @@ func _ensure_tree() -> void:
 		health_comp = HealthComponent.new()
 		health_comp.name = "HealthComponent"
 		add_child(health_comp)
+	if get_node_or_null("PowerUpState") == null:
+		_power = PowerUpHold.new()
+		_power.name = "PowerUpState"
+		add_child(_power)
+	if get_node_or_null("PowerGlow") == null:
+		_power_glow = OmniLight3D.new()
+		_power_glow.name = "PowerGlow"
+		_power_glow.omni_range = 5.5
+		_power_glow.light_energy = 0.0
+		_power_glow.position.y = 1.1
+		add_child(_power_glow)
 
 
 func _cache_nodes() -> void:
@@ -165,6 +181,8 @@ func _cache_nodes() -> void:
 	weapons = $Head/Camera3D/WeaponManager
 	_mesh = get_node_or_null("BodyMesh") as MeshInstance3D
 	health_comp = get_node_or_null("HealthComponent") as HealthComponent
+	_power = get_node_or_null("PowerUpState") as Node
+	_power_glow = get_node_or_null("PowerGlow") as OmniLight3D
 	# Hide own capsule from the first-person camera.
 	_cam.cull_mask = _cam.cull_mask & ~2
 
@@ -248,6 +266,7 @@ func _physics_process(delta: float) -> void:
 	if _wants_fire():
 		weapons.try_fire()
 	_hurt_flash = maxf(_hurt_flash - delta * 2.5, 0.0)
+	_tick_power(delta)
 
 
 func _process(delta: float) -> void:
@@ -284,7 +303,7 @@ func _apply_look(delta: float) -> void:
 
 
 func _sync_move_params() -> void:
-	_move.MOVE_SPEED = MOVE_SPEED
+	_move.MOVE_SPEED = MOVE_SPEED * outgoing_speed_scale()
 	_move.FRICTION = FRICTION
 	_move.ACCELERATION = ACCELERATION
 	_move.AIR_ACCEL = AIR_ACCEL
@@ -401,6 +420,88 @@ func apply_pickup(kind: int) -> bool:
 	return true
 
 
+func apply_power_up(kind: int, seconds: float = -1.0) -> bool:
+	if not _alive:
+		return false
+	if _power == null:
+		_power = PowerUpHold.new()
+		_power.name = "PowerUpState"
+		add_child(_power)
+	if not _power.apply(kind, seconds):
+		return false
+	_refresh_power_visual()
+	return true
+
+
+func _tick_power(delta: float) -> void:
+	if _power == null:
+		return
+	var was_on := _power.is_active()
+	_power.tick(delta)
+	if was_on or _power.is_active():
+		_refresh_power_visual()
+
+
+func _refresh_power_visual() -> void:
+	var tint := Color(1.0, 1.0, 1.0, 0.0)
+	if _power:
+		tint = _power.overlay_color()
+	if _power_overlay == null:
+		_power_overlay = StandardMaterial3D.new()
+		_power_overlay.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_power_overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_power_overlay.albedo_color = tint
+	var on := tint.a > 0.02
+	if _mesh:
+		_mesh.material_overlay = _power_overlay if on else null
+		if _mesh.material_override is StandardMaterial3D:
+			var body := _mesh.material_override as StandardMaterial3D
+			if _power and _power.is_invisible():
+				body.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				body.albedo_color.a = 0.18
+			else:
+				body.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+				body.albedo_color.a = 1.0
+	if _power_glow:
+		_power_glow.light_color = Color(tint.r, tint.g, tint.b)
+		_power_glow.light_energy = 3.4 if on and _power and _power.has_quad() else (2.2 if on else 0.0)
+		_power_glow.visible = on
+	if weapons and weapons.viewmodel:
+		_tint_node(weapons.viewmodel, _power_overlay if on else null)
+
+
+func _tint_node(root: Node, overlay: Material) -> void:
+	if root == null:
+		return
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		for child in node.get_children():
+			stack.append(child)
+		if node is MeshInstance3D:
+			(node as MeshInstance3D).material_overlay = overlay
+
+
+func outgoing_damage_scale() -> float:
+	return _power.damage_scale() if _power else 1.0
+
+
+func outgoing_speed_scale() -> float:
+	return _power.speed_scale() if _power else 1.0
+
+
+func is_stealthed() -> bool:
+	return _power != null and _power.is_invisible()
+
+
+func power_screen_tint() -> Color:
+	return _power.screen_tint() if _power else Color(0, 0, 0, 0)
+
+
+func power_status_text() -> String:
+	return _power.status_text() if _power else ""
+
+
 func _on_vitals_health(_new_health: float) -> void:
 	health_changed.emit()
 
@@ -412,6 +513,9 @@ func _on_vitals_died() -> void:
 
 func _die(attacker: Node) -> void:
 	_alive = false
+	if _power:
+		_power.clear()
+		_refresh_power_visual()
 	AudioFx.play("death")
 	died.emit(attacker)
 	visible = false
@@ -428,6 +532,9 @@ func respawn_at(pos: Vector3) -> void:
 	_alive = true
 	visible = true
 	collision_layer = 2
+	if _power:
+		_power.clear()
+		_refresh_power_visual()
 	weapons.ammo[WeaponManager.Kind.MG] = 100
 	health_changed.emit()
 

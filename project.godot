@@ -21,6 +21,7 @@ config/icon="res://icon.svg"
 InputBindings="*res://scripts/input_bindings.gd"
 GameState="*res://scripts/game_state.gd"
 AudioFx="*res://scripts/audio_fx.gd"
+GameManager="*res://scripts/game_manager.gd"
 
 [display]
 
@@ -55,4 +56,4 @@ ui_cancel={
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 lights_and_shadows/directional_shadow/size=2048
-environment/defaults/default_clear_color=Color(0.02, 0.02, 0.03, 1)
+environment/defaults/default_clear_color=Color(0.32, 0.36, 0.42, 1)
