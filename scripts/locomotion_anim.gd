@@ -106,7 +106,6 @@ func _build_tree() -> void:
 		sm.add_transition("Grounded", "Air", to_air)
 		sm.add_transition("Air", "Grounded", to_land)
 		sm.add_transition("Start", "Air", _transition(0.0))
-		sm.add_transition("Start", "Air", _transition(0.0))
 
 	if tree != null and is_instance_valid(tree):
 		tree.queue_free()
