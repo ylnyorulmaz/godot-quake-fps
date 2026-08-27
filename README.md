@@ -73,7 +73,7 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 - Missing or dead players are ignored; the bot wanders nav points instead
 - **Custom mesh:** `assets/warrior.glb`, `assets/Warrior2.glb`, `assets/female.glb`. Capsules hide; collision stays the 1.8 m capsule. These GLBs have **no clips**, so walking uses a stride bob (height + roll). Drop a rigged GLB with `Idle` / `Walk` / `Run` / `Jump` and [`scripts/locomotion_anim.gd`](scripts/locomotion_anim.gd) builds an AnimationTree (BlendSpace1D on the ground, state-machine xfade to Air). `model_yaw_degrees` default **180**.
 
-First to `frag_limit` (20) wins — player or bot. End screen shows `NAME WINS · N frags`.
+First to `frag_limit` (20) wins — player or bot. Match **stops** and a scoreboard lists every name with **K / D**. The winner’s name is large. Press **R** to restart, **Esc** for the title menu.
 
 ## Custom 3D model
 
@@ -130,6 +130,7 @@ Switch with **1–4** or the mouse wheel (`next_weapon` / `prev_weapon`). Fire w
 | Weapons | 1–4 or wheel |
 | Scoreboard | Tab |
 | Pause | Esc |
+| Restart (end screen) | R |
 
 ## Optional Project Settings
 

@@ -58,7 +58,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 		else:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	if _end.visible and event.is_action_pressed("restart"):
+		_start_match()
+		return
 	if event.is_action_pressed("ui_cancel"):
+		if _end.visible:
+			_dismiss_end_screen()
+			return
 		if GameState.match_running:
 			_toggle_pause()
 		else:
@@ -105,22 +111,48 @@ func _build_menu() -> void:
 
 func _build_end() -> void:
 	_end = Control.new()
+	_end.name = "EndScreen"
 	_end.visible = false
+	_end.process_mode = Node.PROCESS_MODE_ALWAYS
 	_end.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(_end)
 	var bg := ColorRect.new()
-	bg.color = Color(0.04, 0.03, 0.02, 0.88)
+	bg.color = Color(0.04, 0.03, 0.02, 0.9)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_end.add_child(bg)
-	var lab := Label.new()
-	lab.name = "Msg"
-	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lab.set_anchors_preset(Control.PRESET_CENTER)
-	lab.position = Vector2(-240, -40)
-	lab.size = Vector2(480, 80)
-	lab.add_theme_font_size_override("font_size", 40)
-	lab.add_theme_color_override("font_color", Color(1.0, 0.7, 0.2))
-	_end.add_child(lab)
+	var col := VBoxContainer.new()
+	col.set_anchors_preset(Control.PRESET_CENTER)
+	col.position = Vector2(-280, -260)
+	col.custom_minimum_size = Vector2(560, 520)
+	col.add_theme_constant_override("separation", 12)
+	_end.add_child(col)
+	var winner := Label.new()
+	winner.name = "Winner"
+	winner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	winner.add_theme_font_size_override("font_size", 72)
+	winner.add_theme_color_override("font_color", Color(1.0, 0.55, 0.12))
+	winner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	winner.add_theme_constant_override("outline_size", 10)
+	col.add_child(winner)
+	var sub := Label.new()
+	sub.name = "WinsLine"
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 28)
+	sub.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
+	col.add_child(sub)
+	var board := Label.new()
+	board.name = "Board"
+	board.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	board.add_theme_font_size_override("font_size", 26)
+	board.add_theme_color_override("font_color", Color(0.95, 0.9, 0.78))
+	col.add_child(board)
+	var hint := Label.new()
+	hint.name = "Hint"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 22)
+	hint.add_theme_color_override("font_color", Color(0.75, 0.68, 0.55))
+	hint.text = "PRESS  R  TO RESTART     ESC  MENU"
+	col.add_child(hint)
 
 
 func _btn(text: String, cb: Callable) -> Button:
@@ -261,6 +293,7 @@ func _start_match() -> void:
 	GameState.paused = false
 	AudioFx.play("ui")
 	_menu.visible = false
+	_end.visible = false
 	GameState.reset_match()
 	_clear_actors()
 	var packed := load("res://scenes/player.tscn") as PackedScene
@@ -372,13 +405,24 @@ func _toggle_pause() -> void:
 
 func _on_match_ended() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	GameState.paused = true
+	get_tree().paused = true
 	_end.visible = true
-	var msg := _end.get_node("Msg") as Label
 	var winner := GameState.last_winner
 	if winner.is_empty():
 		winner = GameState.PLAYER_NAME
-	msg.text = "%s WINS  ·  %d frags" % [winner, GameState.winner_frags()]
-	await get_tree().create_timer(4.0).timeout
+	var name_lab := _end.find_child("Winner", true, false) as Label
+	if name_lab:
+		name_lab.text = winner
+	var wins := _end.find_child("WinsLine", true, false) as Label
+	if wins:
+		wins.text = "WINS  ·  %d FRAGS" % GameState.winner_frags()
+	var board := _end.find_child("Board", true, false) as Label
+	if board:
+		board.text = GameState.scoreboard_text()
+
+
+func _dismiss_end_screen() -> void:
 	_end.visible = false
 	_menu.visible = true
 	_clear_actors()

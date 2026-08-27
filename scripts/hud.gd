@@ -250,11 +250,12 @@ func _refresh_score() -> void:
 
 
 func _board_text() -> String:
+	var gs := get_node_or_null("/root/GameState")
+	if gs != null and gs.has_method("scoreboard_text"):
+		var head := "SCOREBOARD  ·  first to %d\n\n" % int(gs.get("frag_limit"))
+		return head + str(gs.call("scoreboard_text"))
 	var lines := ["SCOREBOARD  ·  first to %d" % GameState.frag_limit, ""]
 	lines.append("YOU    %d" % GameState.player_kills)
 	for k in GameState.bot_kills.keys():
 		lines.append("%s    %d" % [k, GameState.bot_kills[k]])
-	if not GameState.last_winner.is_empty():
-		lines.append("")
-		lines.append("%s WINS" % GameState.last_winner)
 	return "\n".join(lines)
