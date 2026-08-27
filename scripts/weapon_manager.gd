@@ -110,18 +110,10 @@ func _build_viewmodel() -> void:
 	add_child(viewmodel)
 	for kind in _KIND_ORDER:
 		var data: WeaponData = _catalog[kind]
-		var mi := MeshInstance3D.new()
-		mi.name = data.display_name
-		var box := BoxMesh.new()
-		box.size = data.viewmodel_size
-		mi.mesh = box
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = data.viewmodel_color
-		mat.metallic = 0.4
-		mat.roughness = 0.4
-		mi.material_override = mat
-		mi.visible = kind == current
-		viewmodel.add_child(mi)
+		var gun := WeaponViewmodel.build(data.id)
+		gun.name = data.display_name
+		gun.visible = kind == current
+		viewmodel.add_child(gun)
 
 
 func _process(delta: float) -> void:
