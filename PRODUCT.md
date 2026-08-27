@@ -1,6 +1,6 @@
 # Product
 
-Fantasy **deathmatch** and **capture the flag** in a Quake 3 Arena-style shooter: orcs, elves, dwarves, humans, and other creatures in the same arena.
+Fantasy **deathmatch**, **capture the flag**, and **PvE mini-scenarios** in a Quake 3 Arena-style shooter: orcs, elves, dwarves, humans, and other creatures in the same arena.
 
 This game is **free and open source**. It lives on GitHub. Anyone can play. Anyone can drop in a character (GLB), build a map, or fix a bug.
 
@@ -12,7 +12,7 @@ The code stays free. Multiplayer is a small hosted server — a few dollars a mo
 
 ## Ürün
 
-Orklar, elfler, cüceler, insanlar ve diğer fantastik yaratıklar; **Quake 3 Arena** tarzı bir nişancıda **deathmatch** ve **capture the flag**.
+Orklar, elfler, cüceler, insanlar ve diğer fantastik yaratıklar; **Quake 3 Arena** tarzı bir nişancıda **deathmatch**, **capture the flag** ve **PvE mini senaryolar**.
 
 Oyun **ücretsiz ve açık kaynak**. GitHub’da duracak. İsteyen oynar. İsteyen karakter (GLB) ekler, map yapar, bug çözer.
 
@@ -20,10 +20,13 @@ Oyun **ücretsiz ve açık kaynak**. GitHub’da duracak. İsteyen oynar. İstey
 
 Oyun satılmaz. Çok oyunculu için ayda birkaç dolarlık bir sunucu tutulur; monetizasyon bu kadar.
 
+Solo veya grup: kısa map’ler, birinde omurgasızlara ateş, diğerinde zombiler — her senaryo kendi haritası ve yaratık seti.
+
 ## Modes
 
 - **Deathmatch** — frag limit, everyone vs everyone (ships today).
 - **Capture the Flag** — two flags, two bases (planned).
+- **PvE** — solo or co-op mini scenarios, one map / one creature set each (planned). Example: invertebrates on one map, zombies on another. Drop-in GLB enemies welcome.
 
 ## Contribute
 
