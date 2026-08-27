@@ -11,6 +11,8 @@ func _init() -> void:
 	failed += _test_bot_wins()
 	failed += _test_world_does_not_win()
 	failed += _test_scoreboard_kd()
+	failed += _test_time_limit_picks_standings_leader()
+	failed += _test_time_off_does_not_end()
 	if failed > 0:
 		push_error("game_state tests failed: %d" % failed)
 		quit(1)
@@ -111,5 +113,51 @@ func _test_scoreboard_kd() -> int:
 		push_error("winner should be YOU")
 		return 1
 	print("ok   scoreboard lists names, kills, deaths")
+	gs.queue_free()
+	return 0
+
+
+func _test_time_limit_picks_standings_leader() -> int:
+	var gs = _fresh()
+	gs.frag_limit = 99
+	gs.time_limit = 10.0
+	gs.register_bot("Grunt")
+	gs.register_bot("Ranger")
+	gs.start_match()
+	gs.add_frag("Ranger", "YOU", false, true)
+	gs.add_frag("Ranger", "Grunt", false, false)
+	gs.add_frag("YOU", "Grunt", true, false)
+	gs.tick_clock(10.0)
+	if gs.match_running:
+		push_error("time limit should end the match")
+		return 1
+	if not gs.ended_by_time:
+		push_error("ended_by_time should be set")
+		return 1
+	if gs.last_winner != "Ranger":
+		push_error("clock should award the standings leader, got %s" % gs.last_winner)
+		return 1
+	if gs.clock_text() != "0:00":
+		push_error("clock should be 0:00, got %s" % gs.clock_text())
+		return 1
+	print("ok   time limit awards standings leader")
+	gs.queue_free()
+	return 0
+
+
+func _test_time_off_does_not_end() -> int:
+	var gs = _fresh()
+	gs.frag_limit = 20
+	gs.time_limit = 0.0
+	gs.register_bot("Visl")
+	gs.start_match()
+	gs.tick_clock(999.0)
+	if not gs.match_running or gs.ended_by_time:
+		push_error("time_limit 0 should never clock out")
+		return 1
+	if gs.clock_text() != "":
+		push_error("clock_text should be empty when time is off")
+		return 1
+	print("ok   time off does not end the match")
 	gs.queue_free()
 	return 0

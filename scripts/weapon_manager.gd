@@ -44,6 +44,12 @@ const ALT_SHOTGUN_PELLETS := 1
 const ALT_SHOTGUN_SPREAD_DEG := 0.9
 const ALT_ROCKET_RADIUS := 4.5
 const ALT_ROCKET_KNOCKBACK := 12.0
+const ALT_MG_PELLETS := 3
+const ALT_MG_SPREAD_DEG := 6.5
+const ALT_MG_AMMO := 3
+const ALT_RAIL_AMMO := 2
+const ALT_RAIL_DAMAGE_SCALE := 1.6
+const ALT_RAIL_THICK := 0.14
 
 
 func _ready() -> void:
@@ -205,6 +211,10 @@ func alt_fire() -> bool:
 			return _alt_shotgun()
 		Kind.ROCKET:
 			return _alt_rocket()
+		Kind.MG:
+			return _alt_mg()
+		Kind.RAIL:
+			return _alt_rail()
 		_:
 			return false
 
@@ -220,6 +230,39 @@ func _alt_shotgun() -> bool:
 	_play_fire_sound(data, _aim().origin)
 	_kick()
 	_fire_timer.start(maxf(data.fire_rate, 0.02))
+	_apply_range(data)
+	return true
+
+
+func _alt_mg() -> bool:
+	if int(ammo.get(Kind.MG, 0)) < ALT_MG_AMMO:
+		return false
+	var data := _data(Kind.MG)
+	state = State.FIRING
+	ammo[Kind.MG] = int(ammo.get(Kind.MG, 0)) - ALT_MG_AMMO
+	_fire_hitscan(data, _aim(), ALT_MG_PELLETS, ALT_MG_SPREAD_DEG)
+	_play_fire_sound(data, _aim().origin)
+	_kick()
+	_fire_timer.start(maxf(data.fire_rate, 0.02))
+	_apply_range(data)
+	return true
+
+
+func _alt_rail() -> bool:
+	if int(ammo.get(Kind.RAIL, 0)) < ALT_RAIL_AMMO:
+		if int(ammo.get(Kind.RAIL, 0)) <= 0:
+			cycle(-1)
+		return false
+	var data := _data(Kind.RAIL)
+	state = State.FIRING
+	ammo[Kind.RAIL] = int(ammo.get(Kind.RAIL, 0)) - ALT_RAIL_AMMO
+	var charged: WeaponData = data.duplicate() as WeaponData
+	charged.damage = data.damage * ALT_RAIL_DAMAGE_SCALE
+	charged.trail_thickness = ALT_RAIL_THICK
+	_fire_rail(charged, _aim())
+	_play_fire_sound(data, _aim().origin)
+	_kick()
+	_fire_timer.start(maxf(data.fire_rate * 1.25, 0.02))
 	_apply_range(data)
 	return true
 

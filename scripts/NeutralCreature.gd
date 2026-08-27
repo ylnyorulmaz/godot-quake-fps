@@ -20,9 +20,11 @@ var attack_target: Node3D = null
 
 var health_comp: HealthComponent
 var _mesh: MeshInstance3D
+var _agent: NavigationAgent3D
 var _alive := true
 var _swing := 0.0
 var _retarget := 0.0
+var _path_refresh := 0.0
 
 
 func _ready() -> void:
@@ -74,6 +76,13 @@ func _ensure_tree() -> void:
 		health_comp = $HealthComponent
 		health_comp.max_health = DEFAULT_HP
 		health_comp.current_health = DEFAULT_HP
+	if get_node_or_null("NavigationAgent3D") == null:
+		var agent := NavigationAgent3D.new()
+		agent.name = "NavigationAgent3D"
+		agent.path_desired_distance = 0.55
+		agent.target_desired_distance = 1.15
+		add_child(agent)
+	_agent = get_node_or_null("NavigationAgent3D") as NavigationAgent3D
 
 
 func _physics_process(delta: float) -> void:
@@ -96,17 +105,40 @@ func _physics_process(delta: float) -> void:
 	var to := attack_target.global_position - global_position
 	to.y = 0.0
 	var dist := to.length()
+	var wish := _chase_velocity(attack_target, dist, delta)
+	velocity.x = wish.x
+	velocity.z = wish.z
 	if dist > 0.05:
-		var wish := to / dist * move_speed
-		velocity.x = wish.x
-		velocity.z = wish.z
 		rotation.y = lerp_angle(rotation.y, atan2(-to.x, -to.z), 8.0 * delta)
-	else:
-		velocity.x = 0.0
-		velocity.z = 0.0
 	move_and_slide()
 	if dist <= melee_range:
 		_try_melee()
+
+
+func _chase_velocity(target: Node3D, dist: float, delta: float) -> Vector3:
+	if dist <= melee_range:
+		return Vector3.ZERO
+	_path_refresh -= delta
+	var used_nav := false
+	var wish := Vector3.ZERO
+	if _agent != null and _agent.is_inside_tree():
+		if _path_refresh <= 0.0:
+			_agent.set_target_position(target.global_position)
+			_path_refresh = 0.18
+		if not _agent.is_navigation_finished():
+			var next := _agent.get_next_path_position()
+			var offset := next - global_position
+			offset.y = 0.0
+			if offset.length_squared() > 0.04:
+				wish = offset.normalized() * move_speed
+				used_nav = true
+	if used_nav:
+		return wish
+	var to := target.global_position - global_position
+	to.y = 0.0
+	if to.length() <= 0.05:
+		return Vector3.ZERO
+	return to.normalized() * move_speed
 
 
 func _nearest_entity() -> Node3D:
