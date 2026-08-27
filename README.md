@@ -56,6 +56,7 @@ Camera FOV eases from `base_fov` toward `max_fov` as horizontal speed climbs (bh
 - Jump pads (`scenes/jump_pad.tscn`) and a respawning Mega-Health (`scenes/mega_health.tscn`)
 - Spawn / nav markers so deathmatch still runs on the same map
 - `NavigationRegion3D` wraps the CSG hull; a navmesh is baked at runtime for bots
+- Surfaces use [`scripts/arena_plate_material.gd`](scripts/arena_plate_material.gd): 256×256 FastNoiseLite **cellular** plates, Quake rust/metal gradient (`#1a1a1a` / `#3a2a20` / `#5a5a5a`), nearest filter, `metallic` 0.6 / `roughness` 0.4, optional normal from plate grooves. Drop the node under a `MeshInstance3D` or call `ArenaPlateMaterial.apply_to(mesh)`.
 
 ## Combat bots
 
