@@ -10,6 +10,12 @@ extends Node3D
 ##     MegaHealth, spawn markers, lights, extra pickups
 
 const Atmosphere := preload("res://scripts/arena_atmosphere.gd")
+const Plate := preload("res://scripts/arena_plate_material.gd")
+const PowerUpItem := preload("res://scripts/power_up.gd")
+const Neutral := preload("res://scripts/NeutralCreature.gd")
+const PickupItem := preload("res://scripts/pickup.gd")
+const JumpPadItem := preload("res://scripts/jump_pad.gd")
+const TeleporterItem := preload("res://scripts/teleporter.gd")
 
 const FLOOR_SIZE := 100.0
 const RAMP_RUN := 18.0
@@ -283,11 +289,11 @@ func _jump_pads() -> void:
 
 func _add_pad(pos: Vector3, boost: Vector3, yaw_deg: float) -> void:
 	var packed := load("res://scenes/jump_pad.tscn") as PackedScene
-	var pad: JumpPad
+	var pad: JumpPadItem
 	if packed != null:
-		pad = packed.instantiate() as JumpPad
+		pad = packed.instantiate() as JumpPadItem
 	else:
-		pad = JumpPad.new()
+		pad = JumpPadItem.new()
 	pad.boost = boost
 	pad.position = pos
 	pad.rotation_degrees.y = yaw_deg
@@ -295,12 +301,12 @@ func _add_pad(pos: Vector3, boost: Vector3, yaw_deg: float) -> void:
 
 
 func _teleporters() -> void:
-	var a := Teleporter.new()
+	var a := TeleporterItem.new()
 	a.name = "TeleporterA"
 	a.position = Vector3(34.0, 1.0, 36.0)
 	a.target = Vector3(-38.0, 1.2, -38.0)
 	add_child(a)
-	var b := Teleporter.new()
+	var b := TeleporterItem.new()
 	b.name = "TeleporterB"
 	b.position = Vector3(-34.0, 1.0, -36.0)
 	b.target = Vector3(38.0, 1.2, 38.0)
@@ -313,38 +319,38 @@ func _mega_health() -> void:
 	if packed != null:
 		item = packed.instantiate() as Node3D
 	else:
-		item = MegaHealth.new()
+		item = (load("res://scripts/mega_health.gd") as GDScript).new() as Node3D
 	item.position = Vector3(18.0, 1.1, -14.0)
 	add_child(item)
 
 
 func _pickups() -> void:
 	# Keep deathmatch usable while this arena is the active map.
-	_item(Vector3(16, 1.2, 16), Pickup.Kind.ROCKET, 20.0)
-	_item(Vector3(-16, 1.2, 16), Pickup.Kind.SHOTGUN, 15.0)
-	_item(Vector3(16, 1.2, -16), Pickup.Kind.RAIL, 25.0)
-	_item(Vector3(-16, 1.2, -16), Pickup.Kind.ARMOR, 20.0)
-	_item(Vector3(10, 1.2, 36), Pickup.Kind.RL_AMMO, 15.0)
-	_item(Vector3(-10, 1.2, 36), Pickup.Kind.HEALTH, 10.0)
-	_item(Vector3(-30, PLATFORM_HEIGHT + 1.2, 6), Pickup.Kind.MG_AMMO, 10.0)
+	_item(Vector3(16, 1.2, 16), PickupItem.Kind.ROCKET, 20.0)
+	_item(Vector3(-16, 1.2, 16), PickupItem.Kind.SHOTGUN, 15.0)
+	_item(Vector3(16, 1.2, -16), PickupItem.Kind.RAIL, 25.0)
+	_item(Vector3(-16, 1.2, -16), PickupItem.Kind.ARMOR, 20.0)
+	_item(Vector3(10, 1.2, 36), PickupItem.Kind.RL_AMMO, 15.0)
+	_item(Vector3(-10, 1.2, 36), PickupItem.Kind.HEALTH, 10.0)
+	_item(Vector3(-30, PLATFORM_HEIGHT + 1.2, 6), PickupItem.Kind.MG_AMMO, 10.0)
 
 
-func _item(pos: Vector3, kind: Pickup.Kind, respawn: float) -> void:
-	var p := Pickup.new()
+func _item(pos: Vector3, kind: int, respawn: float) -> void:
+	var p := PickupItem.new()
 	p.configure(kind, respawn)
 	p.position = pos
 	add_child(p)
 
 
 func _power_ups() -> void:
-	_power_item(Vector3(0.0, 1.25, 12.0), PowerUp.Kind.QUAD, false)
-	_power_item(Vector3(22.0, 1.25, 0.0), PowerUp.Kind.HASTE, false)
-	_power_item(Vector3(-22.0, 1.25, 0.0), PowerUp.Kind.INVIS, false)
-	_power_item(Vector3(0.0, 1.25, -12.0), PowerUp.Kind.QUAD, true)
+	_power_item(Vector3(0.0, 1.25, 12.0), PowerUpItem.Kind.QUAD, false)
+	_power_item(Vector3(22.0, 1.25, 0.0), PowerUpItem.Kind.HASTE, false)
+	_power_item(Vector3(-22.0, 1.25, 0.0), PowerUpItem.Kind.INVIS, false)
+	_power_item(Vector3(0.0, 1.25, -12.0), PowerUpItem.Kind.QUAD, true)
 
 
-func _power_item(pos: Vector3, kind: PowerUp.Kind, wild: bool) -> void:
-	var item := PowerUp.new()
+func _power_item(pos: Vector3, kind: int, wild: bool) -> void:
+	var item := PowerUpItem.new()
 	item.configure(kind, 30.0, 15.0)
 	item.position = pos
 	item.relocate_on_respawn = wild
@@ -354,7 +360,7 @@ func _power_item(pos: Vector3, kind: PowerUp.Kind, wild: bool) -> void:
 
 func _neutrals() -> void:
 	for pos in [Vector3(8.0, 1.2, -28.0), Vector3(-12.0, 1.2, 28.0)]:
-		var critter := NeutralCreature.new()
+		var critter := Neutral.new()
 		critter.position = pos
 		add_child(critter)
 
@@ -425,27 +431,27 @@ func _csg_box(center: Vector3, size: Vector3, mat: Material, operation: int = CS
 
 
 func _mat_floor() -> StandardMaterial3D:
-	return _lit_plate(ArenaPlateMaterial.Kind.FLOOR, Color(0.92, 0.84, 0.74))
+	return _lit_plate(Plate.Kind.FLOOR, Color(0.92, 0.84, 0.74))
 
 
 func _mat_wall() -> StandardMaterial3D:
-	return _lit_plate(ArenaPlateMaterial.Kind.WALL, Color(0.78, 0.7, 0.62))
+	return _lit_plate(Plate.Kind.WALL, Color(0.78, 0.7, 0.62))
 
 
 func _mat_ceiling() -> StandardMaterial3D:
-	return _lit_plate(ArenaPlateMaterial.Kind.CEILING, Color(0.55, 0.52, 0.5))
+	return _lit_plate(Plate.Kind.CEILING, Color(0.55, 0.52, 0.5))
 
 
 func _grid_mat(a: Color, b: Color) -> StandardMaterial3D:
-	var mat := ArenaPlateMaterial.make_material(ArenaPlateMaterial.Kind.TRIM)
+	var mat := Plate.make_material(Plate.Kind.TRIM)
 	mat.albedo_color = a.lerp(b, 0.45).lightened(0.08)
 	mat.metallic = 0.18
 	mat.roughness = 0.62
 	return mat
 
 
-func _lit_plate(kind: ArenaPlateMaterial.Kind, albedo: Color) -> StandardMaterial3D:
-	var mat := ArenaPlateMaterial.make_material(kind)
+func _lit_plate(kind: int, albedo: Color) -> StandardMaterial3D:
+	var mat := Plate.make_material(kind)
 	mat.albedo_color = albedo
 	mat.metallic = 0.18
 	mat.roughness = 0.62
