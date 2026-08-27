@@ -178,9 +178,21 @@ func _hide_placeholder_meshes() -> void:
 func _setup_locomotion_visual() -> void:
 	if _visual == null:
 		return
-	_has_anim = ImportedModel.play_idle(_visual)
 	_visual_base_y = _visual.position.y
 	_bob_t = 0.0
+	var existing := get_node_or_null("LocomotionAnim")
+	if existing:
+		existing.queue_free()
+	var loco := LocomotionAnim.new()
+	loco.name = "LocomotionAnim"
+	loco.walk_speed = 4.0
+	loco.run_speed = movement_speed
+	add_child(loco)
+	if loco.bind(self, _visual):
+		_has_anim = true
+		return
+	loco.queue_free()
+	_has_anim = ImportedModel.play_idle(_visual)
 
 
 func _apply_color() -> void:

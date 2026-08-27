@@ -99,6 +99,7 @@ func _ready() -> void:
 	_cam.fov = base_fov
 	_eye_height = EYE_HEIGHT
 	weapons.setup(self, true)
+	_try_locomotion()
 	if health_comp and not health_comp.died.is_connected(_on_vitals_died):
 		health_comp.died.connect(_on_vitals_died)
 	if health_comp and not health_comp.health_changed.is_connected(_on_vitals_health):
@@ -166,6 +167,19 @@ func _cache_nodes() -> void:
 	health_comp = get_node_or_null("HealthComponent") as HealthComponent
 	# Hide own capsule from the first-person camera.
 	_cam.cull_mask = _cam.cull_mask & ~2
+
+
+func _try_locomotion() -> void:
+	var vis := get_node_or_null("VisualModel")
+	if vis == null:
+		return
+	var loco := LocomotionAnim.new()
+	loco.name = "LocomotionAnim"
+	loco.walk_speed = MOVE_SPEED * 0.45
+	loco.run_speed = MOVE_SPEED * SPRINT_MULTIPLIER
+	add_child(loco)
+	if not loco.bind(self, vis):
+		loco.queue_free()
 
 
 func _unhandled_input(event: InputEvent) -> void:
