@@ -34,10 +34,11 @@ signal died(killer: Node)
 @export var ideal_range: float = 12.0
 
 @export_category("Combat")
-@export var attack_cooldown: float = 0.45
-@export var vision_range: float = 40.0
-@export var accuracy_error: float = 0.45
-@export var attack_damage: float = 9.0
+@export var attack_cooldown: float = 0.6
+@export var vision_range: float = 32.0
+## Aim cone half-angle in degrees. 0.45 m world jitter used to sniper every shot.
+@export var accuracy_error: float = 11.0
+@export var attack_damage: float = 7.0
 @export var attack_knockback: float = 3.5
 @export var attack_range: float = 80.0
 
@@ -67,6 +68,7 @@ var _has_anim := false
 var _visual_base_y := 0.0
 var _bob_t := 0.0
 var _player: Node3D
+var _target: Node3D
 var _alive := true
 var _has_los := false
 var _strafe_sign := 1.0
@@ -74,6 +76,8 @@ var _strafe_swap := 0.0
 var _last_attacker: Node = null
 var _wander_target := Vector3.ZERO
 var _path_refresh := 0.0
+var _retarget := 0.0
+var _visual_base_rot := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -179,6 +183,7 @@ func _setup_locomotion_visual() -> void:
 	if _visual == null:
 		return
 	_visual_base_y = _visual.position.y
+	_visual_base_rot = _visual.rotation
 	_bob_t = 0.0
 	var existing := get_node_or_null("LocomotionAnim")
 	if existing:
@@ -227,8 +232,8 @@ func _configure_los() -> void:
 	_los.enabled = true
 	_los.collide_with_bodies = true
 	_los.collide_with_areas = false
-	# World + player only: other bots must not count as "seeing the player".
-	_los.collision_mask = 1 | 2
+	# World + player + other bots.
+	_los.collision_mask = 1 | 2 | 4
 	_los.exclude_parent = true
 	_los.target_position = Vector3(0.0, 0.0, -1.0)
 
@@ -251,11 +256,17 @@ func _physics_process(delta: float) -> void:
 		_strafe_swap = randf_range(0.55, 1.25)
 
 	var player := _resolve_player()
-	_update_los(player)
-	_update_nav_target(player, delta)
+	_retarget -= delta
+	if _retarget <= 0.0:
+		_pick_target(player)
+		_retarget = randf_range(0.4, 0.9)
+	if not _is_usable_foe(_target):
+		_target = null
+	_update_los(_target)
+	_update_nav_target(_target, delta)
 
-	var desired := _desired_horizontal(player)
-	_look_toward(desired, player, delta)
+	var desired := _desired_horizontal(_target)
+	_look_toward(desired, _target, delta)
 
 	if not is_on_floor():
 		velocity.y -= gravity * delta
@@ -289,18 +300,24 @@ func _update_walk_bob(delta: float) -> void:
 		return
 	var dt := delta if delta > 0.0 else 0.016
 	var spd := Vector2(velocity.x, velocity.z).length()
-	if spd > 0.5:
-		_bob_t += dt * (6.0 + spd * 0.35)
-		_visual.position.y = _visual_base_y + absf(sin(_bob_t)) * 0.07
+	if spd > 0.4:
+		_bob_t += dt * (9.0 + spd * 0.85)
+		var step := sin(_bob_t)
+		var plant := absf(step)
+		_visual.position.y = _visual_base_y + plant * 0.16
+		_visual.rotation.x = _visual_base_rot.x - plant * 0.07
+		_visual.rotation.z = _visual_base_rot.z + step * 0.2
 	else:
 		_bob_t = 0.0
 		_visual.position.y = lerpf(_visual.position.y, _visual_base_y, 1.0 - exp(-12.0 * dt))
+		_visual.rotation.x = lerp_angle(_visual.rotation.x, _visual_base_rot.x, 1.0 - exp(-10.0 * dt))
+		_visual.rotation.z = lerp_angle(_visual.rotation.z, _visual_base_rot.z, 1.0 - exp(-10.0 * dt))
 
 
-func _desired_horizontal(player: Node3D) -> Vector3:
+func _desired_horizontal(target: Node3D) -> Vector3:
 	# Aggro: break off the path and strafe while shooting.
-	if _has_los and player != null:
-		return _strafe_velocity(player)
+	if _has_los and target != null:
+		return _strafe_velocity(target)
 	return _path_velocity()
 
 
@@ -315,13 +332,13 @@ func _path_velocity() -> Vector3:
 	return offset.normalized() * movement_speed
 
 
-func _strafe_velocity(player: Node3D) -> Vector3:
-	var to_player := player.global_position - global_position
-	to_player.y = 0.0
-	var dist := to_player.length()
+func _strafe_velocity(target: Node3D) -> Vector3:
+	var to_target := target.global_position - global_position
+	to_target.y = 0.0
+	var dist := to_target.length()
 	if dist < 0.001:
 		return Vector3.ZERO
-	var forward := to_player / dist
+	var forward := to_target / dist
 	var side := Vector3.UP.cross(forward)
 	if side.length_squared() < 0.0001:
 		side = Vector3.RIGHT
@@ -338,11 +355,11 @@ func _strafe_velocity(player: Node3D) -> Vector3:
 	return wish
 
 
-func _update_nav_target(player: Node3D, delta: float) -> void:
+func _update_nav_target(target: Node3D, delta: float) -> void:
 	_path_refresh -= delta
 	var dest := Vector3.ZERO
-	if player != null:
-		dest = player.global_position
+	if target != null:
+		dest = target.global_position
 	else:
 		dest = _wander_point()
 	# Keep the agent informed even while strafing so chase resumes instantly.
@@ -361,31 +378,73 @@ func _wander_point() -> Vector3:
 	return _wander_target
 
 
-func _update_los(player: Node3D) -> void:
-	_has_los = false
-	if player == null or _los == null:
-		return
-	if global_position.distance_to(player.global_position) > vision_range:
-		return
-	var aim := _chest_of(player)
+func _update_los(target: Node3D) -> void:
+	_has_los = _has_line_to(target)
+
+
+func _has_line_to(target: Node3D) -> bool:
+	if target == null or _los == null:
+		return false
+	if global_position.distance_to(target.global_position) > vision_range:
+		return false
+	var aim := _chest_of(target)
 	_los.target_position = _los.to_local(aim)
 	_los.force_raycast_update()
 	if not _los.is_colliding():
-		# Clear shot through empty space still counts if the player is in range.
-		_has_los = true
-		return
-	var hit := _los.get_collider()
-	_has_los = _is_player_collider(hit, player)
-
-
-func _is_player_collider(hit: Object, player: Node3D) -> bool:
-	if hit == null or player == null:
-		return false
-	if hit == player:
 		return true
-	if hit is Node and player.is_ancestor_of(hit as Node):
+	return _is_target_collider(_los.get_collider(), target)
+
+
+func _is_target_collider(hit: Object, target: Node3D) -> bool:
+	if hit == null or target == null:
+		return false
+	if hit == target:
+		return true
+	if hit is Node and target.is_ancestor_of(hit as Node):
 		return true
 	return false
+
+
+func _pick_target(player: Node3D) -> void:
+	if _is_usable_foe(_target) and _has_line_to(_target) and randf() < 0.6:
+		return
+	if _is_usable_foe(_last_attacker) and _has_line_to(_last_attacker as Node3D):
+		_target = _last_attacker as Node3D
+		return
+	var best: Node3D = null
+	var best_d := INF
+	for foe in _collect_foes(player):
+		var d := global_position.distance_squared_to(foe.global_position)
+		if d > vision_range * vision_range:
+			continue
+		if not _has_line_to(foe):
+			continue
+		if d < best_d:
+			best = foe
+			best_d = d
+	_target = best
+
+
+func _collect_foes(player: Node3D) -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	if _is_usable_foe(player):
+		out.append(player)
+	if not is_inside_tree():
+		return out
+	for n in get_tree().get_nodes_in_group("bots"):
+		if _is_usable_foe(n):
+			out.append(n as Node3D)
+	return out
+
+
+func _is_usable_foe(node: Node) -> bool:
+	if node == null or node == self or not is_instance_valid(node):
+		return false
+	if not node.is_inside_tree():
+		return false
+	if node.has_method("is_alive") and not node.is_alive():
+		return false
+	return true
 
 
 func _resolve_player() -> Node3D:
@@ -417,10 +476,10 @@ func _is_usable_player(node: Node) -> bool:
 	return true
 
 
-func _look_toward(desired: Vector3, player: Node3D, delta: float) -> void:
+func _look_toward(desired: Vector3, target: Node3D, delta: float) -> void:
 	var look := Vector3(desired.x, 0.0, desired.z)
-	if _has_los and player != null:
-		look = player.global_position - global_position
+	if _has_los and target != null:
+		look = target.global_position - global_position
 		look.y = 0.0
 	if look.length_squared() < 0.01:
 		return
@@ -435,24 +494,17 @@ func _on_shoot_timer() -> void:
 		_shoot_timer.wait_time = maxf(attack_cooldown, 0.05)
 	if not _has_los:
 		return
-	var player := _resolve_player()
-	if player == null:
+	if not _is_usable_foe(_target):
 		return
-	_fire_hitscan(player)
+	_fire_hitscan(_target)
 
 
-func _fire_hitscan(player: Node3D) -> void:
+func _fire_hitscan(target: Node3D) -> void:
 	var from := global_position + Vector3(0.0, EYE_HEIGHT, 0.0)
-	var aim := _chest_of(player)
-	aim += Vector3(
-			randf_range(-1.0, 1.0),
-			randf_range(-0.35, 0.35),
-			randf_range(-1.0, 1.0)
-	) * accuracy_error
-	var dir := aim - from
-	if dir.length_squared() < 0.0001:
-		return
-	dir = dir.normalized()
+	var aim := _chest_of(target)
+	var cone := deg_to_rad(accuracy_error)
+	cone += Vector2(velocity.x, velocity.z).length() * 0.012
+	var dir := spread_direction(from, aim, cone, randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
 	var to := from + dir * attack_range
 	if not is_inside_tree():
 		return
@@ -479,6 +531,21 @@ func _fire_hitscan(player: Node3D) -> void:
 
 func _chest_of(node: Node3D) -> Vector3:
 	return node.global_position + Vector3(0.0, CHEST_HEIGHT, 0.0)
+
+
+static func spread_direction(from: Vector3, to: Vector3, spread_rad: float, u: float, v: float) -> Vector3:
+	var dir := to - from
+	if dir.length_squared() < 0.0001:
+		return Vector3(0.0, 0.0, -1.0)
+	dir = dir.normalized()
+	var yaw_axis := Vector3.UP
+	var pitch_axis := dir.cross(yaw_axis)
+	if pitch_axis.length_squared() < 0.0001:
+		pitch_axis = dir.cross(Vector3.RIGHT)
+	pitch_axis = pitch_axis.normalized()
+	dir = dir.rotated(pitch_axis, spread_rad * clampf(v, -1.0, 1.0))
+	dir = dir.rotated(yaw_axis, spread_rad * clampf(u, -1.0, 1.0))
+	return dir.normalized()
 
 
 func _spawn_tracer(from: Vector3, to: Vector3) -> void:
@@ -571,6 +638,7 @@ func respawn_at(pos: Vector3) -> void:
 		_shoot_timer.start()
 	if _visual:
 		_visual.position.y = _visual_base_y
+		_visual.rotation = _visual_base_rot
 		_bob_t = 0.0
 	if _mesh and _mesh.material_override is StandardMaterial3D:
 		(_mesh.material_override as StandardMaterial3D).emission_energy_multiplier = 0.0
