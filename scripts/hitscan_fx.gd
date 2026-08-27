@@ -23,6 +23,7 @@ func configure(from: Vector3, to: Vector3, color: Color, thickness := 0.04) -> v
 		var mat := material_override as StandardMaterial3D
 		mat.albedo_color = color
 		mat.emission = color
+	_life = 0.22 if thickness >= 0.05 else 0.08
 	global_position = (from + to) * 0.5
 	if length > 0.05:
 		var up := Vector3.UP

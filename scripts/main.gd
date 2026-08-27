@@ -105,12 +105,14 @@ func _build_menu() -> void:
 	var title := Label.new()
 	title.text = "QUAKE FPS"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 64)
-	title.add_theme_color_override("font_color", Color(1.0, 0.45, 0.12))
+	title.add_theme_font_size_override("font_size", 72)
+	title.add_theme_color_override("font_color", Color(1.0, 0.42, 0.08))
+	title.add_theme_color_override("font_outline_color", Color(0.15, 0.04, 0.0, 0.9))
+	title.add_theme_constant_override("outline_size", 8)
 	col.add_child(title)
 
 	var sub := Label.new()
-	sub.text = "Godot 4.7 arena shooter  ·  air-strafe  ·  rocket jump"
+	sub.text = "DEATHMATCH"
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.add_theme_font_size_override("font_size", 18)
 	sub.add_theme_color_override("font_color", Color(0.8, 0.7, 0.55))
