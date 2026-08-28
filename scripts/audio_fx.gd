@@ -35,6 +35,7 @@ var _cursor := 0
 var _cursor3d := 0
 var _cache: Dictionary = {}
 var _loop: AudioStreamPlayer
+var _mg: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -56,6 +57,10 @@ func _ready() -> void:
 	_loop.name = "Loop"
 	_loop.bus = "Master"
 	add_child(_loop)
+	_mg = AudioStreamPlayer.new()
+	_mg.name = "Machinegun"
+	_mg.bus = "Master"
+	add_child(_mg)
 
 
 func has_clip(kind: String) -> bool:
@@ -65,6 +70,9 @@ func has_clip(kind: String) -> bool:
 
 func play(kind: String) -> void:
 	last_played = kind
+	if kind == "mg":
+		_play_mg_shot()
+		return
 	if _pool.is_empty():
 		return
 	var player := _pool[_cursor]
@@ -108,6 +116,15 @@ func stop_loop() -> void:
 
 func is_looping() -> bool:
 	return _loop != null and _loop.playing
+
+
+func _play_mg_shot() -> void:
+	if _mg == null:
+		return
+	_mg.stream = _stream("mg")
+	_mg.volume_db = float(VOLUME_DB.get("mg", -6.0))
+	_mg.pitch_scale = randf_range(0.96, 1.04)
+	_mg.play(0.0)
 
 
 func _stream(kind: String) -> AudioStream:

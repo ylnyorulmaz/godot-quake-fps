@@ -37,8 +37,12 @@ func _test_files_present() -> int:
 func _test_mapping() -> int:
 	var fx = Sfx.new()
 	root.add_child(fx)
-	if not fx.has_clip("mg") or not fx.has_clip("mg_loop"):
-		push_error("machinegun should map to ogg single-shot and loop")
+	if not fx.has_clip("mg"):
+		push_error("machinegun should map to the 002 single-shot ogg")
+		return 1
+	var mg_path := str(Sfx.FILES.get("mg", ""))
+	if mg_path.find("002-single-shot") < 0:
+		push_error("MG sound must be the 002 single-shot clip, got %s" % mg_path)
 		return 1
 	if not fx.has_clip("shotgun"):
 		push_error("shotgun should map to the pgi ogg")
@@ -85,15 +89,14 @@ func _test_streams() -> int:
 		if not ogg.loop:
 			push_error("mg_loop ogg should have loop enabled")
 			return 1
-	fx.start_loop("mg")
-	if not fx.is_looping():
-		push_error("start_loop should play the MG loop")
+	fx.play("mg")
+	if fx.last_played != "mg":
+		push_error("play(mg) should use the single-shot key")
 		return 1
-	fx.stop_loop()
 	if fx.is_looping():
-		push_error("stop_loop should silence the MG loop")
+		push_error("machinegun should not use the loop clip")
 		return 1
-	print("ok   clips load, loop toggles, jump stays procedural")
+	print("ok   clips load, MG is 002 single-shot, jump stays procedural")
 	fx.queue_free()
 	return 0
 

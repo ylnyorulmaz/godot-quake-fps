@@ -3,6 +3,7 @@ extends Node
 signal match_started
 signal match_ended
 signal scores_changed
+signal event_logged(text: String)
 
 const PLAYER_NAME := "YOU"
 const SENS_LOW := 0.0014
@@ -24,6 +25,7 @@ var match_time := 0.0
 var ended_by_time := false
 var arena_layout := LAYOUT_YARD
 var last_winner := ""
+var last_event := ""
 
 
 func reset_match() -> void:
@@ -32,6 +34,7 @@ func reset_match() -> void:
 	bot_kills.clear()
 	bot_deaths.clear()
 	last_winner = ""
+	last_event = ""
 	match_running = false
 	paused = false
 	match_time = 0.0
@@ -44,7 +47,7 @@ func register_bot(bot_name: String) -> void:
 	bot_deaths[bot_name] = 0
 
 
-func add_frag(killer_name: String, victim_name: String, is_player_killer: bool, is_player_victim: bool) -> void:
+func add_frag(killer_name: String, victim_name: String, is_player_killer: bool, is_player_victim: bool, verb: String = "fragged") -> void:
 	if is_player_killer:
 		player_kills += 1
 	elif bot_kills.has(killer_name):
@@ -54,7 +57,46 @@ func add_frag(killer_name: String, victim_name: String, is_player_killer: bool, 
 	elif bot_deaths.has(victim_name):
 		bot_deaths[victim_name] = int(bot_deaths[victim_name]) + 1
 	scores_changed.emit()
+	push_event(format_frag(killer_name, victim_name, verb))
 	_maybe_end_match(killer_name, is_player_killer)
+
+
+static func format_frag(killer_name: String, victim_name: String, verb: String = "fragged") -> String:
+	if killer_name.is_empty() or killer_name == "world" or killer_name == victim_name:
+		return "%s bit the dust" % victim_name
+	var action := verb if not verb.is_empty() else "fragged"
+	return "%s %s %s" % [killer_name, action, victim_name]
+
+
+static func weapon_verb(killer: Node) -> String:
+	if killer == null or not is_instance_valid(killer):
+		return "fragged"
+	if "weapons" in killer and killer.weapons != null:
+		return verb_for_kind(int(killer.weapons.get("current")))
+	if "bot_name" in killer:
+		return "machine gunned"
+	return "fragged"
+
+
+static func verb_for_kind(kind: int) -> String:
+	match kind:
+		0:
+			return "machine gunned"
+		1:
+			return "shotgunned"
+		2:
+			return "rocketed"
+		3:
+			return "railed"
+		_:
+			return "fragged"
+
+
+func push_event(text: String) -> void:
+	if text.is_empty():
+		return
+	last_event = text
+	event_logged.emit(text)
 
 
 func _maybe_end_match(killer_name: String, is_player_killer: bool) -> void:

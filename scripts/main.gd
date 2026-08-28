@@ -491,7 +491,7 @@ func _spawn_pos() -> Vector3:
 
 
 func _on_player_died(killer: Node) -> void:
-	GameState.add_frag(_actor_name(killer), "YOU", false, true)
+	GameState.add_frag(_actor_name(killer), "YOU", false, true, GameState.weapon_verb(killer))
 	await get_tree().create_timer(1.6).timeout
 	if is_instance_valid(_player) and GameState.match_running:
 		_player.respawn_at(_spawn_pos())
@@ -499,7 +499,7 @@ func _on_player_died(killer: Node) -> void:
 
 func _on_bot_died(killer: Node, bot: EnemyBot) -> void:
 	var is_player := killer == _player
-	GameState.add_frag(_actor_name(killer), bot.bot_name, is_player, false)
+	GameState.add_frag(_actor_name(killer), bot.bot_name, is_player, false, GameState.weapon_verb(killer))
 	await get_tree().create_timer(1.8).timeout
 	if is_instance_valid(bot) and GameState.match_running:
 		bot.respawn_at(_spawn_pos())
